@@ -3,14 +3,13 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Tienda Dtalles Tejidos</title>
+<title>Dtalles — Tejidos con Amor</title>
 <meta name="description" content="Producciones hecha a mano, con cariño para ti y los tuyos">
 <meta name="theme-color" content="#8B0000">
 
 <link rel="manifest" href="/manifest.json">
-<link rel="icon" type="image/jpeg" href="/icono-tienda.jpg">
 
-<link rel="apple-touch-icon" href="/icono-tienda.jpg">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Dtalles Tejidos">
@@ -65,9 +64,10 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
   background:white;
   border:4px solid var(--gold);
   border-radius:16px;
-  padding:20px 28px;
+  padding:25px 28px;
   box-shadow:0 0 0 1px rgba(201,169,110,.45),0 0 50px rgba(201,169,110,.3),0 24px 72px rgba(0,0,0,.88);
   position:relative;
+  overflow:visible;
 }
 .logo-letrero::before,.logo-letrero::after{
   content:'';position:absolute;
@@ -77,7 +77,7 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
 }
 .logo-letrero::before{left:14px;}
 .logo-letrero::after{right:14px;}
-.logo-letrero img{display:block;width:clamp(200px,32vw,360px);height:auto;object-fit:contain;border-radius:8px;}
+.logo-letrero img{display:block;width:clamp(200px,32vw,320px);height:auto;object-fit:contain;border-radius:8px;}
 
 .lema{
   font-family:'Playfair Display',serif;font-style:italic;
@@ -696,13 +696,13 @@ function sbF(path,opts){
 }
 
 function sbUp(file,path){
-  return fetch(SB_URL+'/storage/v1/object/product-images/'+path,{
+  return fetch(SB_URL+'/storage/v1/object/productos/'+path,{
     method:'POST',
     headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':file.type},
     body:file
   }).then(function(r){
     if(!r.ok) throw new Error('Upload failed');
-    return SB_URL+'/storage/v1/object/public/product-images/'+path;
+    return SB_URL+'/storage/v1/object/public/productos/'+path;
   });
 }
 
