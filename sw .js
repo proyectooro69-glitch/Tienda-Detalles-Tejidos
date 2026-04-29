@@ -1,10 +1,9 @@
-const CACHE_NAME = 'dtalles-v1';
+const CACHE_NAME = 'dtalles-tienda-v1';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon-192x192.png',
-  '/icons/icon-512x512.png'
+  '/icono-tienda.jpg'
 ];
 
 self.addEventListener('install', function(e) {
