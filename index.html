@@ -633,8 +633,8 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
 <div id="toast"></div>
 
 <script>
-var SB_URL = 'https://ivvevjzhpxuunpohisgs.supabase.co';
-var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRkcmV4bWdmd3NtZ2xvamhwbm9oIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDU3MTQsImV4cCI6MjA5MDY4MTcxNH0.vJDxPwkwR0IDL3kszag2eqK8jTfT_QpFzSPvsuUVWDg';
+var SB_URL = 'https://zkiqgciijhqizhxkryea.supabase.co';
+var SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraXFnY2lpamhxaXpoeGtyeWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzE1OTQsImV4cCI6MjA5MzA0NzU5NH0.6UM3YjNbx9KnmPbVhekaAEJ5zbV_rj2WIhq8OnVozyM';
 var WA_NUM = '5353927796';
 var ADM_U  = 'dtalles';
 var ADM_P  = 'tejidos2024';
@@ -696,13 +696,39 @@ function sbF(path,opts){
 }
 
 function sbUp(file,path){
+  var ct=file.type||'application/octet-stream';
   return fetch(SB_URL+'/storage/v1/object/product-images/'+path,{
     method:'POST',
-    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':file.type},
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':ct,'x-upsert':'true'},
     body:file
   }).then(function(r){
-    if(!r.ok) throw new Error('Upload failed');
+    if(!r.ok) return r.text().then(function(t){
+      console.error('Storage error',r.status,t);
+      throw new Error('Error al subir imagen ('+r.status+'): '+t);
+    });
     return SB_URL+'/storage/v1/object/public/product-images/'+path;
+  });
+}
+
+function compressImg(file,maxPx,quality){
+  return new Promise(function(resolve){
+    if(!file.type.startsWith('image/')){resolve(file);return;}
+    var url=URL.createObjectURL(file);
+    var img=new Image();
+    img.onload=function(){
+      URL.revokeObjectURL(url);
+      var w=img.naturalWidth,h=img.naturalHeight;
+      var scale=Math.min(1,maxPx/Math.max(w,h));
+      var nw=Math.round(w*scale),nh=Math.round(h*scale);
+      var canvas=document.createElement('canvas');
+      canvas.width=nw;canvas.height=nh;
+      canvas.getContext('2d').drawImage(img,0,0,nw,nh);
+      canvas.toBlob(function(blob){
+        resolve(blob?new File([blob],file.name,{type:'image/jpeg'}):file);
+      },'image/jpeg',quality||0.80);
+    };
+    img.onerror=function(){URL.revokeObjectURL(url);resolve(file);};
+    img.src=url;
   });
 }
 
@@ -895,23 +921,40 @@ function addProd(){
   var tag=document.getElementById('n-tag').value.trim();
   var img=document.getElementById('n-img').files[0];
   if(!sec||!nom||!pre){toast('Seccion, nombre y precio son requeridos');return;}
-  toast('Guardando...');
   var doSave=function(imgUrl){
     var nw={seccion:sec,nombre:nom,descripcion:des,precio:pre,emoji:emo,etiqueta:tag,imagen_url:imgUrl||null,created_at:new Date().toISOString()};
-    sbF('productos',{method:'POST',body:JSON.stringify(nw)}).then(function(saved){
-      prods.unshift(Array.isArray(saved)?saved[0]:Object.assign({},nw,{id:Date.now()}));
-    }).catch(function(){prods.unshift(Object.assign({},nw,{id:Date.now()}));});
-    ['n-nom','n-des','n-pre','n-emo','n-tag'].forEach(function(id){document.getElementById(id).value='';});
-    document.getElementById('n-img').value='';
-    document.getElementById('n-sec').value='';
-    document.querySelectorAll('.pick-c').forEach(function(c){c.classList.remove('sel');});
-    if(secActual) renderProds(secActual);
-    toast('Producto guardado');
+    return sbF('productos',{method:'POST',body:JSON.stringify(nw)}).then(function(saved){
+      var saved0=Array.isArray(saved)?saved[0]:null;
+      prods.unshift(saved0||Object.assign({},nw,{id:Date.now()}));
+      ['n-nom','n-des','n-pre','n-emo','n-tag'].forEach(function(id){document.getElementById(id).value='';});
+      document.getElementById('n-img').value='';
+      document.getElementById('n-sec').value='';
+      document.querySelectorAll('.pick-c').forEach(function(c){c.classList.remove('sel');});
+      if(secActual) renderProds(secActual);
+      renderGest();
+      toast('✓ Producto guardado');
+    }).catch(function(e){
+      console.error('Error guardando producto:',e);
+      toast('Error al guardar: '+e.message);
+    });
   };
   if(img){
-    var ext=img.name.split('.').pop();
-    sbUp(img,'productos/'+sec+'-'+Date.now()+'.'+ext).then(doSave).catch(function(){toast('Error al subir imagen');});
-  } else {doSave(null);}
+    toast('Comprimiendo imagen...');
+    compressImg(img,1200,0.82).then(function(compressed){
+      toast('Subiendo imagen...');
+      var path='productos/'+sec+'-'+Date.now()+'.jpg';
+      return sbUp(compressed,path);
+    }).then(function(imgUrl){
+      toast('Guardando producto...');
+      return doSave(imgUrl);
+    }).catch(function(e){
+      console.error('Error imagen:',e);
+      toast('Error: '+e.message);
+    });
+  } else {
+    toast('Guardando...');
+    doSave(null);
+  }
 }
 
 function renderGest(){
@@ -960,18 +1003,29 @@ function saveEdit(){
     etiqueta:document.getElementById('e-tag').value.trim()
   };
   var img=document.getElementById('e-img').files[0];
-  toast('Actualizando...');
   var doUpd=function(imgUrl){
     if(imgUrl) upd.imagen_url=imgUrl;
-    sbF('productos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(upd)}).catch(function(){});
-    var i=prods.findIndex(function(p){return String(p.id)===String(id);});
-    if(i!==-1) prods[i]=Object.assign({},prods[i],upd);
-    closeEdit();renderGest();
-    if(secActual) renderProds(secActual);
-    toast('Actualizado');
+    return sbF('productos?id=eq.'+id,{method:'PATCH',body:JSON.stringify(upd)}).then(function(){
+      var i=prods.findIndex(function(p){return String(p.id)===String(id);});
+      if(i!==-1) prods[i]=Object.assign({},prods[i],upd);
+      closeEdit();renderGest();
+      if(secActual) renderProds(secActual);
+      toast('✓ Actualizado');
+    }).catch(function(e){toast('Error al guardar: '+e.message);});
   };
-  if(img){sbUp(img,'productos/edit-'+Date.now()+'.'+img.name.split('.').pop()).then(doUpd).catch(function(){toast('Error');});}
-  else doUpd(null);
+  if(img){
+    toast('Comprimiendo imagen...');
+    compressImg(img,1200,0.82).then(function(c){
+      toast('Subiendo imagen...');
+      return sbUp(c,'productos/edit-'+Date.now()+'.jpg');
+    }).then(function(imgUrl){
+      toast('Guardando...');
+      return doUpd(imgUrl);
+    }).catch(function(e){toast('Error: '+e.message);});
+  } else {
+    toast('Actualizando...');
+    doUpd(null);
+  }
 }
 function delProd(id){
   if(!confirm('Eliminar este producto?')) return;
