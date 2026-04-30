@@ -890,10 +890,14 @@ function checkHashAdmin(){
   if(window.location.hash==='#admin'){
     history.replaceState(null,null,' ');
     abrirLogin();
+  } else if(window.location.hash==='#puertas'){
+    history.replaceState(null,null,' ');
+    showView('p-puertas');
   }
 }
 window.addEventListener('hashchange',function(){
   if(window.location.hash==='#admin'){history.replaceState(null,null,' ');abrirLogin();}
+  else if(window.location.hash==='#puertas'){history.replaceState(null,null,' ');showView('p-puertas');}
 });
 function logoClick(){
   lClicks++;
