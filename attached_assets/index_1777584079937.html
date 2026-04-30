@@ -427,26 +427,6 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
 .btn-ce{flex:1;background:rgba(255,49,49,.1);border:1px solid rgba(255,49,49,.4);color:var(--neon-r);padding:12px;border-radius:9px;cursor:pointer;font-family:'Poppins',sans-serif;font-size:.88rem;font-weight:700;transition:all .2s;}
 .btn-ce:hover{background:rgba(255,49,49,.24);}
 
-/* ══ FILTRO SUBSECCIONES ══ */
-#subsec-filter{display:none;padding:14px 22px 0;max-width:1200px;margin:0 auto;width:100%;}
-#subsec-filter.visible{display:block;}
-.subsec-bar{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;}
-.subsec-btn{
-  background:rgba(0,0,0,.4);
-  border:1.5px solid rgba(201,169,110,.25);
-  color:#a6896a;
-  padding:9px 18px;border-radius:22px;
-  cursor:pointer;font-family:'Poppins',sans-serif;
-  font-size:.82rem;font-weight:600;letter-spacing:.5px;
-  transition:all .25s;
-}
-.subsec-btn:hover{border-color:var(--gold);color:var(--gold-b);}
-.subsec-btn.on{
-  background:linear-gradient(135deg,var(--crimson),#5a0000);
-  border-color:var(--gold);color:var(--gold-b);
-  box-shadow:0 4px 14px rgba(122,0,0,.55);
-}
-
 #toast{position:fixed;bottom:28px;left:50%;transform:translateX(-50%) translateY(10px);background:linear-gradient(135deg,var(--crimson),#3a0000);border:1px solid rgba(201,169,110,.3);color:var(--gold-b);padding:10px 24px;border-radius:30px;font-weight:700;font-size:.8rem;opacity:0;transition:all .3s cubic-bezier(.23,1,.32,1);z-index:700;pointer-events:none;white-space:nowrap;}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
 
@@ -552,7 +532,6 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
     </div>
   </div>
   <div id="int-banner"></div>
-  <div id="subsec-filter"><div class="subsec-bar" id="subsec-bar"></div></div>
   <div class="prods-grid" id="prods-grid">
     <div class="spinner-wrap"><div class="spinner"></div></div>
   </div>
@@ -599,15 +578,6 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
           <div class="sec-picker" id="sec-picker"></div>
           <input type="hidden" id="n-sec">
         </div>
-        <div class="frow" id="subsec-container" style="display:none;">
-          <label class="flbl"><span class="stn">1b</span>Subseccion (Infancia)</label>
-          <select id="n-subsec" class="finp">
-            <option value="">-- Selecciona subseccion --</option>
-            <option value="canastilla">Canastilla</option>
-            <option value="munequeria">Muñequeria</option>
-            <option value="decoracion_regalos">Decoracion Infantil y Regalos</option>
-          </select>
-        </div>
         <div class="frow">
           <label class="flbl"><span class="stn">2</span>Foto del producto</label>
           <input type="file" id="n-img" accept="image/*" class="finp" style="padding:6px">
@@ -647,15 +617,6 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
     <h3>Editar Producto</h3>
     <input type="hidden" id="e-id">
     <div class="badge-s" id="e-sec"></div>
-    <div class="frow" id="e-subsec-container" style="display:none;">
-      <label class="flbl">Subseccion</label>
-      <select id="e-subsec" class="finp">
-        <option value="">-- Sin subseccion --</option>
-        <option value="canastilla">Canastilla</option>
-        <option value="munequeria">Muñequeria</option>
-        <option value="decoracion_regalos">Decoracion Infantil y Regalos</option>
-      </select>
-    </div>
     <div class="frow"><label class="flbl">Nueva foto (opcional)</label><input type="file" id="e-img" accept="image/*" class="finp" style="padding:6px"></div>
     <div class="frow"><label class="flbl">Nombre</label><input type="text" id="e-nom" class="finp"></div>
     <div class="frow"><label class="flbl">Descripcion</label><textarea id="e-des" class="finp" rows="2"></textarea></div>
@@ -687,14 +648,8 @@ var SECS = {
   hogar:   {n:'Para el Hogar',   e:'&#x1F3E1;'}
 };
 
-var SUBSECCIONES = {
-  canastilla:         {n:'Canastilla',                    e:'&#x1F476;'},
-  munequeria:         {n:'Mu&ntilde;equer&iacute;a',      e:'&#x1F9F8;'},
-  decoracion_regalos: {n:'Decoraci&oacute;n y Regalos',   e:'&#x1F381;'}
-};
-
 var prods=[],puertas={infancia:true,mujer:true,hombre:false,hogar:false};
-var portadas={},secActual=null,subsecActual=null,logged=false,lClicks=0,lTimer;
+var portadas={},secActual=null,logged=false,lClicks=0,lTimer;
 
 function init(){
   try{
@@ -742,18 +697,16 @@ function sbF(path,opts){
 
 function sbUp(file,path){
   var ct=file.type||'application/octet-stream';
-  return scl.storage.from('product-images').upload(path,file,{
-    upsert:true,
-    contentType:ct
-  }).then(function(res){
-    if(res.error){
-      console.error('Storage error',res.error);
-      throw new Error('Error al subir imagen: '+res.error.message);
-    }
-    var pub=scl.storage.from('product-images').getPublicUrl(path);
-    var url=pub && pub.data && pub.data.publicUrl;
-    if(!url) throw new Error('No se pudo obtener la URL publica');
-    return url;
+  return fetch(SB_URL+'/storage/v1/object/product-images/'+path,{
+    method:'POST',
+    headers:{'apikey':SB_KEY,'Authorization':'Bearer '+SB_KEY,'Content-Type':ct,'x-upsert':'true'},
+    body:file
+  }).then(function(r){
+    if(!r.ok) return r.text().then(function(t){
+      console.error('Storage error',r.status,t);
+      throw new Error('Error al subir imagen ('+r.status+'): '+t);
+    });
+    return SB_URL+'/storage/v1/object/public/product-images/'+path;
   });
 }
 
@@ -785,7 +738,7 @@ function showView(id){
   window.scrollTo(0,0);
 }
 function entrar(){showView('p-puertas');}
-function volver(){secActual=null;subsecActual=null;showView('p-puertas');}
+function volver(){secActual=null;showView('p-puertas');}
 
 function renderPuertas(){
   var g=document.getElementById('grid-puertas');
@@ -822,7 +775,6 @@ function renderPuertas(){
 
 function entrarSec(k){
   secActual=k;
-  subsecActual=null;
   var s=SECS[k];
   document.getElementById('int-emoji').innerHTML=s.e;
   document.getElementById('int-titulo').textContent=s.n;
@@ -830,39 +782,14 @@ function entrarSec(k){
   ban.innerHTML=portadas[k]?
     '<div class="int-banner" style="background-image:url(\''+portadas[k]+'\')"></div>':
     '<div class="int-banner-ph">'+s.e+'</div>';
-  renderSubsecFilter(k);
   showView('p-interior');
-  renderProds(k,null);
+  renderProds(k);
 }
 
-function renderSubsecFilter(k){
-  var wrap=document.getElementById('subsec-filter');
-  var bar=document.getElementById('subsec-bar');
-  if(k!=='infancia'){wrap.classList.remove('visible');bar.innerHTML='';return;}
-  var html='<button class="subsec-btn on" onclick="filtrarSubsec(null,this)">Todos</button>';
-  Object.keys(SUBSECCIONES).forEach(function(sk){
-    html+='<button class="subsec-btn" onclick="filtrarSubsec(\''+sk+'\',this)">'+SUBSECCIONES[sk].e+' '+SUBSECCIONES[sk].n+'</button>';
-  });
-  bar.innerHTML=html;
-  wrap.classList.add('visible');
-}
-
-function filtrarSubsec(sk,btn){
-  subsecActual=sk;
-  document.querySelectorAll('#subsec-bar .subsec-btn').forEach(function(b){b.classList.remove('on');});
-  if(btn) btn.classList.add('on');
-  renderProds(secActual,sk);
-}
-
-function renderProds(k,subsec){
-  if(arguments.length<2) subsec=subsecActual;
+function renderProds(k){
   var g=document.getElementById('prods-grid');
   var s=SECS[k];
-  var lista=prods.filter(function(p){
-    if(p.seccion!==k) return false;
-    if(subsec && p.subseccion!==subsec) return false;
-    return true;
-  });
+  var lista=prods.filter(function(p){return p.seccion===k;});
   if(!lista.length){
     g.innerHTML='<div class="empty-sec"><span class="empty-ico">'+s.e+'</span><p style="font-family:\'Playfair Display\',serif;font-size:1.1rem;margin-bottom:7px;">Proximamente!</p><p style="font-size:.83rem;">Estamos preparando algo especial.</p></div>';
     return;
@@ -983,14 +910,10 @@ function pickSec(k,el){
   document.querySelectorAll('.pick-c').forEach(function(c){c.classList.remove('sel');});
   el.classList.add('sel');
   document.getElementById('n-sec').value=k;
-  var sub=document.getElementById('subsec-container');
-  if(k==='infancia'){sub.style.display='block';}
-  else{sub.style.display='none';document.getElementById('n-subsec').value='';}
 }
 
 function addProd(){
   var sec=document.getElementById('n-sec').value;
-  var subsec=document.getElementById('n-subsec').value;
   var nom=document.getElementById('n-nom').value.trim();
   var des=document.getElementById('n-des').value.trim();
   var pre=document.getElementById('n-pre').value.trim();
@@ -998,17 +921,14 @@ function addProd(){
   var tag=document.getElementById('n-tag').value.trim();
   var img=document.getElementById('n-img').files[0];
   if(!sec||!nom||!pre){toast('Seccion, nombre y precio son requeridos');return;}
-  if(sec==='infancia' && !subsec){toast('Selecciona la subseccion de Infancia');return;}
   var doSave=function(imgUrl){
-    var nw={seccion:sec,subseccion:subsec||null,nombre:nom,descripcion:des,precio:pre,emoji:emo,etiqueta:tag,imagen_url:imgUrl||null,created_at:new Date().toISOString()};
+    var nw={seccion:sec,nombre:nom,descripcion:des,precio:pre,emoji:emo,etiqueta:tag,imagen_url:imgUrl||null,created_at:new Date().toISOString()};
     return sbF('productos',{method:'POST',body:JSON.stringify(nw)}).then(function(saved){
       var saved0=Array.isArray(saved)?saved[0]:null;
       prods.unshift(saved0||Object.assign({},nw,{id:Date.now()}));
       ['n-nom','n-des','n-pre','n-emo','n-tag'].forEach(function(id){document.getElementById(id).value='';});
       document.getElementById('n-img').value='';
       document.getElementById('n-sec').value='';
-      document.getElementById('n-subsec').value='';
-      document.getElementById('subsec-container').style.display='none';
       document.querySelectorAll('.pick-c').forEach(function(c){c.classList.remove('sel');});
       if(secActual) renderProds(secActual);
       renderGest();
@@ -1046,48 +966,24 @@ function renderGest(){
   Object.keys(SECS).forEach(function(k){
     var ps=ag[k];if(!ps||!ps.length)return;
     html+='<div class="mg-g"><div class="mg-t">'+SECS[k].e+' '+SECS[k].n+' ('+ps.length+')</div>';
-    if(k==='infancia'){
-      var byS={};
-      ps.forEach(function(p){var sk=p.subseccion||'_sin';if(!byS[sk])byS[sk]=[];byS[sk].push(p);});
-      var orden=Object.keys(SUBSECCIONES).concat(['_sin']);
-      orden.forEach(function(sk){
-        var arr=byS[sk];if(!arr||!arr.length)return;
-        var nom=sk==='_sin'?'(Sin subseccion)':SUBSECCIONES[sk].n;
-        html+='<div style="margin:8px 0 6px;color:#a6896a;font-size:.78rem;font-weight:600;letter-spacing:.5px;">&#9656; '+nom+' ('+arr.length+')</div>';
-        arr.forEach(function(p){html+=mgRow(p,k);});
-      });
-    } else {
-      ps.forEach(function(p){html+=mgRow(p,k);});
-    }
+    ps.forEach(function(p){
+      var th=p.imagen_url?'<img src="'+p.imagen_url+'" alt="">':p.emoji||SECS[k].e;
+      html+='<div class="mg-row">'+
+        '<div class="mg-th">'+th+'</div>'+
+        '<div class="mg-inf"><div class="mg-nm">'+esc(p.nombre)+'</div><div class="mg-pr">'+esc(p.precio)+'</div></div>'+
+        '<div class="act-btns">'+
+          '<button class="btn-ed" onclick="openEdit('+JSON.stringify(p).replace(/"/g,'&quot;')+')">&#9999;&#65039;</button>'+
+          '<button class="btn-dl" onclick="delProd(\''+p.id+'\')">&#128465;&#65039;</button>'+
+        '</div></div>';
+    });
     html+='</div>';
   });
   el.innerHTML=html;
 }
 
-function mgRow(p,k){
-  var th=p.imagen_url?'<img src="'+p.imagen_url+'" alt="">':p.emoji||SECS[k].e;
-  return '<div class="mg-row">'+
-    '<div class="mg-th">'+th+'</div>'+
-    '<div class="mg-inf"><div class="mg-nm">'+esc(p.nombre)+'</div><div class="mg-pr">'+esc(p.precio)+'</div></div>'+
-    '<div class="act-btns">'+
-      '<button class="btn-ed" onclick="openEdit('+JSON.stringify(p).replace(/"/g,'&quot;')+')">&#9999;&#65039;</button>'+
-      '<button class="btn-dl" onclick="delProd(\''+p.id+'\')">&#128465;&#65039;</button>'+
-    '</div></div>';
-}
-
 function openEdit(p){
   document.getElementById('e-id').value=p.id;
   document.getElementById('e-sec').textContent=(SECS[p.seccion]?SECS[p.seccion].n:p.seccion);
-  document.getElementById('e-sec').setAttribute('data-sec',p.seccion);
-  var subC=document.getElementById('e-subsec-container');
-  var subSel=document.getElementById('e-subsec');
-  if(p.seccion==='infancia'){
-    subC.style.display='block';
-    subSel.value=p.subseccion||'';
-  } else {
-    subC.style.display='none';
-    subSel.value='';
-  }
   document.getElementById('e-nom').value=p.nombre;
   document.getElementById('e-des').value=p.descripcion||'';
   document.getElementById('e-pre').value=p.precio;
@@ -1099,7 +995,6 @@ function openEdit(p){
 function closeEdit(){document.getElementById('mod-edit').classList.remove('open');}
 function saveEdit(){
   var id=document.getElementById('e-id').value;
-  var sec=document.getElementById('e-sec').getAttribute('data-sec');
   var upd={
     nombre:document.getElementById('e-nom').value.trim(),
     descripcion:document.getElementById('e-des').value.trim(),
@@ -1107,11 +1002,6 @@ function saveEdit(){
     emoji:document.getElementById('e-emo').value.trim(),
     etiqueta:document.getElementById('e-tag').value.trim()
   };
-  if(sec==='infancia'){
-    var sv=document.getElementById('e-subsec').value;
-    if(!sv){toast('Selecciona la subseccion');return;}
-    upd.subseccion=sv;
-  }
   var img=document.getElementById('e-img').files[0];
   var doUpd=function(imgUrl){
     if(imgUrl) upd.imagen_url=imgUrl;
