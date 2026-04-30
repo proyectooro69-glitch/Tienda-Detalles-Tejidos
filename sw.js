@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dtalles-v1';
+const CACHE_NAME = 'dtalles-v2';
 const ASSETS = [
   '/',
   '/index.html',

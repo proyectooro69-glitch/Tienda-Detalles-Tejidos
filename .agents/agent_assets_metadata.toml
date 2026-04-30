@@ -1,0 +1,8 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "tDnGWhX76qUSQ4cjfUiSI"
+uri = "file://dtalles_actualizado.zip"
+type = "unspecified"
+title = "dtalles_actualizado.zip (index.html + sw.js)"
