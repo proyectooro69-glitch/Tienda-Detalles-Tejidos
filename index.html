@@ -887,18 +887,16 @@ function buyWA(n){
 
 /* ADMIN LOGIN - URL hash #admin o 5 clics en logo */
 function checkHashAdmin(){
-  if(window.location.hash==='#admin'){
+  var h=window.location.hash;
+  if(h==='#admin'){history.replaceState(null,null,' ');abrirLogin();}
+  else if(h==='#puertas'){history.replaceState(null,null,' ');showView('p-puertas');}
+  else if(h.indexOf('#sec-')===0){
+    var k=h.substring(5);
     history.replaceState(null,null,' ');
-    abrirLogin();
-  } else if(window.location.hash==='#puertas'){
-    history.replaceState(null,null,' ');
-    showView('p-puertas');
+    if(SECS[k]) setTimeout(function(){entrarSec(k);},600);
   }
 }
-window.addEventListener('hashchange',function(){
-  if(window.location.hash==='#admin'){history.replaceState(null,null,' ');abrirLogin();}
-  else if(window.location.hash==='#puertas'){history.replaceState(null,null,' ');showView('p-puertas');}
-});
+window.addEventListener('hashchange',checkHashAdmin);
 function logoClick(){
   lClicks++;
   clearTimeout(lTimer);
