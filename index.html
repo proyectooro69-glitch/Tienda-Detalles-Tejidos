@@ -128,6 +128,9 @@ body{font-family:'Poppins',sans-serif;background:#08080a;color:#f0e8e0;overflow-
 @media(max-width:860px){.grid-puertas{grid-template-columns:repeat(2,1fr);}}
 @media(max-width:500px){.grid-puertas{grid-template-columns:repeat(2,1fr);gap:14px;}}
 
+.puerta-header{display:flex;align-items:center;justify-content:space-between;width:100%;margin-bottom:4px;font-family:'Poppins',sans-serif;font-size:0.75rem;}
+.vista-badge{color:var(--gold-d);display:flex;align-items:center;gap:4px;opacity:0.85;letter-spacing:.5px;}
+
 .puerta-wrap{display:flex;flex-direction:column;align-items:center;}
 
 /* ══ PUERTA CRISTAL REALISTA ══ */
@@ -705,6 +708,25 @@ function init(){
   renderPuertas();
   renderPicker();
   checkHashAdmin();
+  Object.keys(SECS).forEach(function(k){ trackSector(k); });
+}
+
+function fmtNum(n){
+  return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
+}
+
+async function trackSector(dept){
+  try{
+    var {data,error}=await scl.from('visitas').select('total').eq('departamento',dept).maybeSingle();
+    var actual=(data&&!error)?(data.total||0):0;
+    var nuevo=actual+1;
+    await scl.from('visitas').upsert({departamento:dept,total:nuevo},{onConflict:'departamento'});
+    var el=document.getElementById('vistas-'+dept);
+    if(el) el.textContent=fmtNum(nuevo);
+  }catch(e){
+    var el=document.getElementById('vistas-'+dept);
+    if(el) el.textContent='—';
+  }
 }
 
 function loadAll(){
@@ -798,7 +820,10 @@ function renderPuertas(){
     var w=document.createElement('div');
     w.className='puerta-wrap';
     var covHtml=cov?'<div class="puerta-cover" style="background-image:url(\''+cov+'\')"></div>':'';
-    w.innerHTML='<div class="letrero-neon '+(open?'neon-open':'neon-closed')+'">'+(open?'&#9679; ABIERTO':'&#9679; CERRADO')+'</div>'+
+    w.innerHTML='<div class="puerta-header">'+
+      '<div class="letrero-neon '+(open?'neon-open':'neon-closed')+'">'+(open?'&#9679; ABIERTO':'&#9679; CERRADO')+'</div>'+
+      '<span class="vista-badge">&#128065; <span id="vistas-'+k+'">—</span></span>'+
+    '</div>'+
       '<div class="puerta '+(open?'is-open':'is-closed')+'" data-k="'+k+'">'+
         covHtml+
         '<div class="puerta-arch"></div>'+
