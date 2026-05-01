@@ -708,26 +708,32 @@ function init(){
   renderPuertas();
   renderPicker();
   checkHashAdmin();
-  Object.keys(SECS).forEach(function(k){ trackSector(k, puertas[k]===true); });
 }
 
 function fmtNum(n){
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
 
-async function trackSector(dept, increment){
+async function leerVisitas(dept){
   try{
     var {data,error}=await scl.from('visitas').select('total').eq('departamento',dept).maybeSingle();
     var actual=(data&&!error)?(data.total||0):0;
-    var nuevo=increment ? actual+1 : actual;
-    if(increment){
-      await scl.from('visitas').upsert({departamento:dept,total:nuevo},{onConflict:'departamento'});
-    }
     var el=document.getElementById('vistas-'+dept);
-    if(el) el.textContent=fmtNum(nuevo||1);
+    if(el) el.textContent=fmtNum(actual);
+  }catch(e){}
+}
+
+async function trackSector(dept){
+  try{
+    var {data,error}=await scl.from('visitas').select('total').eq('departamento',dept).maybeSingle();
+    var actual=(data&&!error)?(data.total||0):0;
+    var nuevo=actual+1;
+    await scl.from('visitas').upsert({departamento:dept,total:nuevo},{onConflict:'departamento'});
+    var el=document.getElementById('vistas-'+dept);
+    if(el) el.textContent=fmtNum(nuevo);
   }catch(e){
     var el=document.getElementById('vistas-'+dept);
-    if(el) el.textContent='1';
+    if(el) el.textContent=fmtNum(1);
   }
 }
 
@@ -845,6 +851,10 @@ function renderPuertas(){
     })(k,open,s.n);
     g.appendChild(w);
   });
+  Object.keys(SECS).forEach(function(k){
+    if(puertas[k]) leerVisitas(k);
+    else{var el=document.getElementById('vistas-'+k);if(el) el.textContent='0';}
+  });
 }
 
 function entrarSec(k){
@@ -860,7 +870,7 @@ function entrarSec(k){
   renderSubsecFilter(k);
   showView('p-interior');
   renderProds(k,null);
-  trackSector(k, true);
+  trackSector(k);
 }
 
 function renderSubsecFilter(k){
