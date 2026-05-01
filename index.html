@@ -708,24 +708,26 @@ function init(){
   renderPuertas();
   renderPicker();
   checkHashAdmin();
-  Object.keys(SECS).forEach(function(k){ trackSector(k); });
+  Object.keys(SECS).forEach(function(k){ trackSector(k, puertas[k]===true); });
 }
 
 function fmtNum(n){
   return String(n).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
 }
 
-async function trackSector(dept){
+async function trackSector(dept, increment){
   try{
     var {data,error}=await scl.from('visitas').select('total').eq('departamento',dept).maybeSingle();
     var actual=(data&&!error)?(data.total||0):0;
-    var nuevo=actual+1;
-    await scl.from('visitas').upsert({departamento:dept,total:nuevo},{onConflict:'departamento'});
+    var nuevo=increment ? actual+1 : actual;
+    if(increment){
+      await scl.from('visitas').upsert({departamento:dept,total:nuevo},{onConflict:'departamento'});
+    }
     var el=document.getElementById('vistas-'+dept);
-    if(el) el.textContent=fmtNum(nuevo);
+    if(el) el.textContent=fmtNum(nuevo||1);
   }catch(e){
     var el=document.getElementById('vistas-'+dept);
-    if(el) el.textContent='—';
+    if(el) el.textContent='1';
   }
 }
 
@@ -858,6 +860,7 @@ function entrarSec(k){
   renderSubsecFilter(k);
   showView('p-interior');
   renderProds(k,null);
+  trackSector(k, true);
 }
 
 function renderSubsecFilter(k){
