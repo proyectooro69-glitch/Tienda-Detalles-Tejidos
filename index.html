@@ -993,13 +993,15 @@ function renderProds(k,subsec){
 }
 
 function buyWA(n,precio,imgUrl){
-  var prodUrl=window.location.href;
+  var base=window.location.origin+window.location.pathname;
+  var prodUrl=base+(n?'?prod='+encodeURIComponent(n):'');
   var msg='Hola, me interesa este producto: '+n+'.'+(precio?' Precio: '+precio+'.'':'')+' Puedes verlo aqui: '+prodUrl;
   window.open('https://wa.me/'+WA_NUM+'?text='+encodeURIComponent(msg),'_blank');
 }
 
 function setOGTags(p){
-  var prodUrl=window.location.href;
+  var base=window.location.origin+window.location.pathname;
+  var prodUrl=base+(p.nombre?'?prod='+encodeURIComponent(p.nombre):'');
   var img=p.imagen_url||'';
   var desc=(p.descripcion||'Tejido hecho a mano con amor')+(p.precio?' — Precio: '+p.precio:'');
   document.getElementById('og-title').setAttribute('content',p.nombre+' — Dtalles Tejidos');
@@ -1080,7 +1082,6 @@ function openModal(p){
   document.getElementById('mp-nombre').textContent=p.nombre;
   document.getElementById('mp-precio').textContent=p.precio;
   document.getElementById('mp-desc').textContent=p.descripcion||'';
-  history.replaceState(null,'',window.location.pathname+'?prod='+encodeURIComponent(p.nombre));
   document.getElementById('mp-wa-btn').onclick=function(){buyWA(p.nombre,p.precio,p.imagen_url);};
   setOGTags(p);
   document.getElementById('modal-prod').classList.add('open');
@@ -1097,7 +1098,6 @@ function switchImg(url,thumb){
 function closeModal(){
   document.getElementById('modal-prod').classList.remove('open');
   document.body.style.overflow='';
-  history.replaceState(null,'',window.location.pathname);
   resetOGTags();
 }
 
