@@ -7,6 +7,20 @@
 <meta name="description" content="Producciones hechas a mano, con cariño para ti y los tuyos">
 <meta name="theme-color" content="#8B0000">
 
+<!-- Open Graph / WhatsApp preview -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dtalles — Tejidos con Amor">
+<meta property="og:title" id="og-title" content="Dtalles — Tejidos con Amor">
+<meta property="og:description" id="og-description" content="Producciones hechas a mano, con cariño para ti y los tuyos">
+<meta property="og:image" id="og-image" content="">
+<meta property="og:url" id="og-url" content="">
+<meta property="og:locale" content="es_GT">
+<!-- Twitter Card -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" id="tw-title" content="Dtalles — Tejidos con Amor">
+<meta name="twitter:description" id="tw-desc" content="Producciones hechas a mano, con cariño para ti y los tuyos">
+<meta name="twitter:image" id="tw-image" content="">
+
 <link rel="manifest" href="/manifest.json">
 
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -978,8 +992,35 @@ function renderProds(k,subsec){
   }).join('');
 }
 
-function buyWA(n){
-  window.open('https://wa.me/'+WA_NUM+'?text='+encodeURIComponent('Hola! Me interesa comprar: *'+n+'*'),'_blank');
+function buyWA(n,precio){
+  var base=window.location.origin+window.location.pathname;
+  var msg='Hola! Me interesa este producto:\n*'+n+'*'+(precio?'\nPrecio: '+precio:'')+'\nVer en tienda: '+base;
+  window.open('https://wa.me/'+WA_NUM+'?text='+encodeURIComponent(msg),'_blank');
+}
+
+function setOGTags(p){
+  var base=window.location.origin+window.location.pathname;
+  var img=p.imagen_url||'';
+  var desc=(p.descripcion||'Tejido hecho a mano con amor')+' — Precio: '+(p.precio||'');
+  document.getElementById('og-title').setAttribute('content',p.nombre+' — Dtalles Tejidos');
+  document.getElementById('og-description').setAttribute('content',desc);
+  document.getElementById('og-image').setAttribute('content',img);
+  document.getElementById('og-url').setAttribute('content',base);
+  document.getElementById('tw-title').setAttribute('content',p.nombre+' — Dtalles Tejidos');
+  document.getElementById('tw-desc').setAttribute('content',desc);
+  document.getElementById('tw-image').setAttribute('content',img);
+  document.title=p.nombre+' — Dtalles Tejidos';
+}
+
+function resetOGTags(){
+  document.getElementById('og-title').setAttribute('content','Dtalles — Tejidos con Amor');
+  document.getElementById('og-description').setAttribute('content','Producciones hechas a mano, con cariño para ti y los tuyos');
+  document.getElementById('og-image').setAttribute('content','');
+  document.getElementById('og-url').setAttribute('content','');
+  document.getElementById('tw-title').setAttribute('content','Dtalles — Tejidos con Amor');
+  document.getElementById('tw-desc').setAttribute('content','Producciones hechas a mano, con cariño para ti y los tuyos');
+  document.getElementById('tw-image').setAttribute('content','');
+  document.title='Dtalles — Tejidos con Amor';
 }
 
 function previewImgs(input,prevId){
@@ -1038,7 +1079,8 @@ function openModal(p){
   document.getElementById('mp-nombre').textContent=p.nombre;
   document.getElementById('mp-precio').textContent=p.precio;
   document.getElementById('mp-desc').textContent=p.descripcion||'';
-  document.getElementById('mp-wa-btn').onclick=function(){buyWA(p.nombre);};
+  document.getElementById('mp-wa-btn').onclick=function(){buyWA(p.nombre,p.precio);};
+  setOGTags(p);
   document.getElementById('modal-prod').classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -1053,6 +1095,7 @@ function switchImg(url,thumb){
 function closeModal(){
   document.getElementById('modal-prod').classList.remove('open');
   document.body.style.overflow='';
+  resetOGTags();
 }
 
 document.addEventListener('keydown',function(e){
