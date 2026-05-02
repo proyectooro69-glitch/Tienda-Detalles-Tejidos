@@ -58,9 +58,7 @@ const MIME = {
 
 /* ── Security headers ────────────────────────────────────────── */
 function securityHeaders(origin) {
-  return {
-    /* Anti-clickjacking */
-    'X-Frame-Options': 'SAMEORIGIN',
+  const headers = {
     /* Evita MIME-type sniffing */
     'X-Content-Type-Options': 'nosniff',
     /* XSS filter legacy browsers */
@@ -71,25 +69,27 @@ function securityHeaders(origin) {
     'Referrer-Policy': 'strict-origin-when-cross-origin',
     /* Permissions Policy — deshabilita APIs innecesarias */
     'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
-    /* Content Security Policy */
+    /* Content Security Policy — sin frame-ancestors para permitir iframes */
     'Content-Security-Policy': [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://fonts.googleapis.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https:",
       "worker-src 'self' blob:",
-      "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",
     ].join('; '),
-    /* CORS */
-    'Access-Control-Allow-Origin': origin && isOriginAllowed(origin) ? origin : '',
-    'Access-Control-Allow-Methods': 'GET, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Vary': 'Origin',
   };
+  /* CORS — solo agregar header si hay origen válido */
+  if (origin && isOriginAllowed(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Methods'] = 'GET, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+    headers['Vary'] = 'Origin';
+  }
+  return headers;
 }
 
 function safeJoin(root, target) {
