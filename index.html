@@ -752,8 +752,6 @@ var WA_NUM = '5353927796';
 var ADM_U  = 'dtalles';
 var ADM_P  = 'tejidos2024';
 
-var scl = supabase.createClient(SB_URL, SB_KEY);
-
 var SECS = {
   infancia:{n:'Para la Infancia',e:'&#x1F9F8;'},
   mujer:   {n:'Para la Mujer',   e:'&#x1F457;'},
@@ -769,6 +767,10 @@ var SUBSECCIONES = {
 
 var prods=[],puertas={infancia:true,mujer:true,hombre:false,hogar:false};
 var portadas={},secActual=null,subsecActual=null,logged=false,lClicks=0,lTimer;
+
+var scl;
+try { scl = supabase.createClient(SB_URL, SB_KEY); }
+catch(e){ console.error('Supabase no disponible:', e); }
 
 function init(){
   try{
