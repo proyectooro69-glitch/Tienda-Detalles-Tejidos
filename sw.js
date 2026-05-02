@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dtalles-v3';
+const CACHE_NAME = 'dtalles-v4';
 const ASSETS = [
   '/manifest.json',
   '/icons/icon-192x192.png',
