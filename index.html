@@ -996,7 +996,7 @@ function renderProds(k,subsec){
 
 function buyWA(n,precio,imgUrl){
   var base=window.location.origin+window.location.pathname;
-  var prodUrl=base+(n?'?prod='+encodeURIComponent(n):'');
+  var prodUrl=base+'?prod='+encodeURIComponent(n||'')+(imgUrl?'&img='+encodeURIComponent(imgUrl):'');
   var msg='Hola, me interesa este producto: '+n+'.'+(precio?' Precio: '+precio+'.':'')+' Puedes verlo aqui: '+prodUrl;
   window.open('https://wa.me/'+WA_NUM+'?text='+encodeURIComponent(msg),'_blank');
 }
