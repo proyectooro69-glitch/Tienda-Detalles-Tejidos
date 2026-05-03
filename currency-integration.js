@@ -1,57 +1,31 @@
-/**
- * ═══════════════════════════════════════════════════════════════
- * currency-integration.js — Integración Limpia (Solo CUP)
- * ═══════════════════════════════════════════════════════════════
- */
-
 window.currencyManager = null;
 
 async function initCurrencySystem() {
   window.currencyManager = new CurrencyManager();
   
-  // Forzamos la actualización de toda la interfaz
-  updateAllPrices();
-  updateProductCard();
-  
-  // Ocultamos cualquier selector que haya quedado
+  // OCULTAR EL SELECTOR SIEMPRE
   const selector = document.getElementById('currency-selector-container');
-  if (selector) selector.style.display = 'none';
+  if (selector) {
+    selector.style.display = 'none';
+    selector.remove(); // Lo eliminamos del mapa
+  }
 
-  console.log('✅ Tienda fijada en CUP.');
+  updateAllPrices();
+  console.log('✅ Tienda fijada en CUP y selector eliminado.');
 }
 
-// Dejamos esta función vacía para que NO cree el botoncito arriba a la derecha
+// Función vacía para que no se cree el botón de USD
 function createCurrencySelector() {
-  console.log('Selector desactivado para mayor profesionalidad.');
+  console.log('El selector de divisas ha sido desactivado.');
 }
 
 function updateAllPrices() {
   document.querySelectorAll('[data-product-price]').forEach(el => {
     const price = parseFloat(el.getAttribute('data-product-price'));
-    if (!isNaN(price)) {
-      el.textContent = window.currencyManager.formatPrice(price);
-    }
-  });
-
-  document.querySelectorAll('[data-price-amount]').forEach(el => {
-    const price = parseFloat(el.getAttribute('data-price-amount'));
-    if (!isNaN(price)) {
-      el.textContent = window.currencyManager.formatPrice(price);
-    }
+    if (!isNaN(price)) el.textContent = window.currencyManager.formatPrice(price);
   });
 }
 
-function updateProductCard() {
-  const priceElement = document.querySelector('[data-modal-price]');
-  if (priceElement) {
-    const price = parseFloat(priceElement.getAttribute('data-modal-price'));
-    if (!isNaN(price)) {
-      priceElement.textContent = window.currencyManager.formatPrice(price);
-    }
-  }
-}
-
-// Hook para Supabase
 window.applyPricingToProducts = function(products) {
   if (!window.currencyManager) return;
   products.forEach(product => {
