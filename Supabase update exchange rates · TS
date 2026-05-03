@@ -1,0 +1,317 @@
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Supabase Edge Function: update-exchange-rates
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * INSTALACIÓN:
+ * 1. En Supabase Dashboard → Edge Functions
+ * 2. New Function → update-exchange-rates
+ * 3. Copiar este contenido
+ * 4. Deploy
+ * 
+ * TRIGGERS:
+ * - Manual: POST /functions/v1/update-exchange-rates
+ * - Automático: Crear cron job en tu servidor
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+
+interface ExchangeRateResponse {
+  base: string
+  rates: Record<string, number>
+  timestamp: string
+}
+
+interface ExchangeRate {
+  moneda_origen: string
+  moneda_destino: string
+  tasa: number
+  fuente: string
+}
+
+Deno.serve(async (req: Request) => {
+  // Validar método
+  if (req.method === 'OPTIONS') {
+    return new Response(null, {
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      },
+    })
+  }
+
+  if (req.method !== 'POST') {
+    return new Response(
+      JSON.stringify({ error: 'Method not allowed' }),
+      { status: 405, headers: { 'Content-Type': 'application/json' } }
+    )
+  }
+
+  try {
+    // Inicializar cliente de Supabase
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')
+    const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
+
+    if (!supabaseUrl || !supabaseServiceRoleKey) {
+      throw new Error('Supabase credentials not configured')
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseServiceRoleKey)
+
+    // Obtener tasas de una API externa
+    const rates = await fetchExchangeRates()
+
+    if (!rates || Object.keys(rates).length === 0) {
+      throw new Error('No exchange rates received from API')
+    }
+
+    // Preparar datos para insertar/actualizar
+    const exchangeRatesToUpdate: ExchangeRate[] = []
+    const baseoCurrency = 'USD'
+
+    // Para cada divisa de destino, crear registros
+    for (const [currency, rate] of Object.entries(rates)) {
+      if (currency === baseoCurrency) continue
+
+      exchangeRatesToUpdate.push({
+        moneda_origen: baseoCurrency,
+        moneda_destino: currency,
+        tasa: rate as number,
+        fuente: 'api_external',
+      })
+
+      // También crear el inverso (divisa → USD)
+      if (typeof rate === 'number' && rate > 0) {
+        exchangeRatesToUpdate.push({
+          moneda_origen: currency,
+          moneda_destino: baseoCurrency,
+          tasa: 1 / (rate as number),
+          fuente: 'api_external',
+        })
+      }
+    }
+
+    // Actualizar en Supabase
+    for (const exchangeRate of exchangeRatesToUpdate) {
+      const { error } = await supabase
+        .from('tasas_cambio')
+        .upsert([
+          {
+            moneda_origen: exchangeRate.moneda_origen,
+            moneda_destino: exchangeRate.moneda_destino,
+            tasa: exchangeRate.tasa,
+            fuente: exchangeRate.fuente,
+            updated_at: new Date().toISOString(),
+          },
+        ], {
+          onConflict: 'moneda_origen,moneda_destino',
+        })
+
+      if (error) {
+        console.error('Error updating exchange rate:', error)
+      }
+    }
+
+    // Respuesta exitosa
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `Updated ${exchangeRatesToUpdate.length} exchange rates`,
+        timestamp: new Date().toISOString(),
+        count: exchangeRatesToUpdate.length,
+      }),
+      {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
+    )
+  } catch (error) {
+    console.error('Error in update-exchange-rates:', error.message)
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: error.message || 'Internal server error',
+      }),
+      {
+        status: 500,
+        headers: {
+          'Content-Type': 'application/json',
+          'Access-Control-Allow-Origin': '*',
+        },
+      }
+    )
+  }
+})
+
+/**
+ * Obtiene tasas de cambio de una API externa
+ * OPCIONES:
+ * 1. Open Exchange Rates (https://openexchangerates.org)
+ * 2. Fixer.io (https://fixer.io)
+ * 3. Exchangerate-api (https://exchangerate-api.com)
+ * 4. Tasas simuladas para desarrollo
+ */
+async function fetchExchangeRates(): Promise<Record<string, number>> {
+  const apiKey = Deno.env.get('EXCHANGE_RATE_API_KEY')
+  const apiProvider = Deno.env.get('EXCHANGE_RATE_PROVIDER') || 'open-exchange-rates'
+
+  try {
+    switch (apiProvider) {
+      case 'open-exchange-rates':
+        return await fetchOpenExchangeRates(apiKey)
+
+      case 'fixer':
+        return await fetchFixerRates(apiKey)
+
+      case 'exchangerate-api':
+        return await fetchExchangeRateApi(apiKey)
+
+      case 'mock':
+        return getMockRates()
+
+      default:
+        return getMockRates()
+    }
+  } catch (error) {
+    console.warn(`Failed to fetch from ${apiProvider}, using mock rates:`, error.message)
+    return getMockRates()
+  }
+}
+
+/**
+ * Open Exchange Rates API
+ * https://openexchangerates.org
+ */
+async function fetchOpenExchangeRates(apiKey?: string): Promise<Record<string, number>> {
+  if (!apiKey) throw new Error('EXCHANGE_RATE_API_KEY not configured for OpenExchangeRates')
+
+  const url = `https://openexchangerates.org/api/latest.json?app_id=${apiKey}&base=USD`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(`OpenExchangeRates API error: ${response.statusText}`)
+  }
+
+  const data = await response.json()
+  return data.rates || {}
+}
+
+/**
+ * Fixer.io API
+ * https://fixer.io
+ */
+async function fetchFixerRates(apiKey?: string): Promise<Record<string, number>> {
+  if (!apiKey) throw new Error('EXCHANGE_RATE_API_KEY not configured for Fixer')
+
+  const url = `http://api.fixer.io?access_key=${apiKey}&base=USD`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(`Fixer API error: ${response.statusText}`)
+  }
+
+  const data = await response.json()
+  return data.rates || {}
+}
+
+/**
+ * ExchangeRate-API
+ * https://exchangerate-api.com
+ */
+async function fetchExchangeRateApi(apiKey?: string): Promise<Record<string, number>> {
+  if (!apiKey) throw new Error('EXCHANGE_RATE_API_KEY not configured for ExchangeRate-API')
+
+  const url = `https://v6.exchangerate-api.com/v6/${apiKey}/latest/USD`
+  const response = await fetch(url)
+
+  if (!response.ok) {
+    throw new Error(`ExchangeRate-API error: ${response.statusText}`)
+  }
+
+  const data = await response.json()
+  return data.conversion_rates || {}
+}
+
+/**
+ * Tasas simuladas para desarrollo/testing
+ */
+function getMockRates(): Record<string, number> {
+  return {
+    USD: 1.0,
+    EUR: 0.92,
+    CUP: 24.0,
+    USDC: 1.0,
+    GBP: 0.79,
+    JPY: 149.5,
+    CNY: 7.24,
+    CAD: 1.36,
+  }
+}
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * CONFIGURACIÓN EN SUPABASE
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * 1. SECRETS:
+ *    - EXCHANGE_RATE_API_KEY: tu-api-key
+ *    - EXCHANGE_RATE_PROVIDER: open-exchange-rates (o: fixer, exchangerate-api, mock)
+ *    - SUPABASE_URL: https://xxxxx.supabase.co
+ *    - SUPABASE_SERVICE_ROLE_KEY: eyJ...
+ * 
+ * 2. TRIGGER AUTOMÁTICO (cron, cada 6 horas):
+ *    bash
+ *    curl -X POST https://xxxxx.supabase.co/functions/v1/update-exchange-rates \
+ *      -H "Authorization: Bearer xxx-token"
+ *
+ * 3. O usar servicio cron externo:
+ *    - Cron-job.org (gratuito)
+ *    - EasyCron (gratuito)
+ *    - GitLab CI/CD (si lo usas)
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
+
+/**
+ * EJEMPLO: Trigger automático con GitHub Actions
+ * 
+ * Crear archivo: .github/workflows/update-exchange-rates.yml
+ */
+%GITHUB_ACTIONS_EXAMPLE%
+
+/**
+ * ═══════════════════════════════════════════════════════════════════════════
+ * OPCIONES DE PROVEEDORES:
+ * ═══════════════════════════════════════════════════════════════════════════
+ * 
+ * 1. OPEN EXCHANGE RATES (Recomendado)
+ *    ✅ 1000 requests/mes gratis
+ *    ✅ Actualizado diariamente
+ *    ✅ 200+ divisas
+ *    Signup: https://openexchangerates.org
+ * 
+ * 2. FIXER.IO
+ *    ✅ 100 requests/mes gratis
+ *    ✅ Europa principalmente
+ *    ✅ Simple API
+ *    Signup: https://fixer.io
+ * 
+ * 3. EXCHANGERATE-API
+ *    ✅ 1500 requests/mes gratis
+ *    ✅ Buena precisión
+ *    ✅ Actualizado cada hora
+ *    Signup: https://exchangerate-api.com
+ * 
+ * 4. MOCK (Para desarrollo)
+ *    ✅ Sin necesidad de API key
+ *    ✅ Perfectamente funcional para testing
+ *    ⚠️  No usar en producción
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════
+ */
