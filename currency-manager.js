@@ -1,6 +1,6 @@
 /**
  * ═══════════════════════════════════════════════════════════════
- * CurrencyManager — Versión Simplificada (Solo CUP)
+ * CurrencyManager — Versión Fija en CUP (Sin conversiones)
  * ═══════════════════════════════════════════════════════════════
  */
 
@@ -8,54 +8,36 @@ class CurrencyManager {
   constructor(config = {}) {
     this.storageKey = 'dtalles_currency_prefs';
     
-    // Definimos solo CUP como moneda disponible
+    // Definimos solo CUP para que no exista otra opción
     this.currencies = {
       CUP: { name: 'Peso Cubano', symbol: 'cup', type: 'FIAT' }
     };
     
     this.activeCurrencies = ['CUP'];
-    this.currentCurrency = 'CUP';
-    this.rates = { 'CUP': 1.0, 'USD': 1.0 }; // Tasa 1:1 para que el número no cambie
+    this.currentCurrency = 'CUP'; // Forzamos CUP desde el inicio
+    this.rates = { 'CUP': 1.0, 'USD': 1.0 }; 
     this.lastUpdate = Date.now();
     this.listeners = [];
   }
 
-  // Siempre devuelve CUP independientemente de lo guardado
-  loadPreference() {
-    return 'CUP';
-  }
-
-  savePreference() {
-    // No hace falta guardar cambios ya que es fija
-  }
-
-  async loadRates() {
-    // No necesita consultar APIs externas, usa tasa fija 1:1
-    return this.rates;
-  }
+  loadPreference() { return 'CUP'; }
+  savePreference() { }
+  async loadRates() { return this.rates; }
 
   setCurrency(currencyCode) {
-    // Bloqueamos cualquier cambio, siempre será CUP
     this.currentCurrency = 'CUP';
-    this.notifyListeners('currencyChanged', { 
-      currency: 'CUP',
-      symbol: 'cup'
-    });
+    this.notifyListeners('currencyChanged', { currency: 'CUP', symbol: 'cup' });
     return true;
   }
 
-  /**
-   * Devuelve el mismo número que recibe (sin multiplicar por 125)
-   */
+  // Devuelve el número exacto que pongas en el administrador
   convert(amount) {
     return amount; 
   }
 
-  /**
-   * Formatea el precio con dos decimales y la palabra "cup" al final
-   */
+  // Formato profesional: "3.800,00 cup"
   formatPrice(amount) {
-    if (amount === null || amount === undefined) return "0,00 cup";
+    if (amount === null || amount === undefined || isNaN(amount)) return "0,00 cup";
     
     const formatted = new Intl.NumberFormat('es-ES', {
       minimumFractionDigits: 2,
@@ -65,48 +47,21 @@ class CurrencyManager {
     return `${formatted} cup`;
   }
 
-  formatNumber(value) {
-    return new Intl.NumberFormat('es-ES', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-
-  getSymbol() {
-    return 'cup';
-  }
-
-  getName() {
-    return 'Peso Cubano';
-  }
-
-  getAvailableCurrencies() {
-    return [{ code: 'CUP', name: 'Peso Cubano', symbol: 'cup', type: 'FIAT' }];
-  }
+  getSymbol() { return 'cup'; }
+  getName() { return 'Peso Cubano'; }
 
   onChange(callback) {
-    if (typeof callback === 'function') {
-      this.listeners.push(callback);
-    }
+    if (typeof callback === 'function') this.listeners.push(callback);
   }
 
   notifyListeners(event, data) {
-    this.listeners.forEach(listener => {
-      try {
-        listener(event, data);
-      } catch (e) {
-        console.error('Error en listener:', e);
-      }
+    this.listeners.forEach(l => {
+      try { l(event, data); } catch (e) { console.error(e); }
     });
   }
 
   getState() {
-    return {
-      currentCurrency: 'CUP',
-      rates: this.rates,
-      availableCurrencies: this.getAvailableCurrencies(),
-    };
+    return { currentCurrency: 'CUP', rates: this.rates };
   }
 }
-
-console.log('✅ Gestor de moneda fija (CUP) cargado sin recortes');
+console.log('✅ Gestor CUP cargado.');
