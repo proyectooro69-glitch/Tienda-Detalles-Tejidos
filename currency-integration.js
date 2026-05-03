@@ -1,44 +1,25 @@
-window.currencyManager = null;
-
 async function initCurrencySystem() {
   window.currencyManager = new CurrencyManager();
   
-  // OCULTAR EL SELECTOR SIEMPRE
+  // ELIMINAR EL SELECTOR SIEMPRE
   const selector = document.getElementById('currency-selector-container');
-  if (selector) {
-    selector.style.display = 'none';
-    selector.remove(); // Lo eliminamos del mapa
-  }
+  if (selector) selector.remove();
 
   updateAllPrices();
-  console.log('✅ Tienda fijada en CUP y selector eliminado.');
+  console.log("--- TIENDA EN MODO SOLO CUP ---");
 }
 
-// Función vacía para que no se cree el botón de USD
-function createCurrencySelector() {
-  console.log('El selector de divisas ha sido desactivado.');
+function createCurrencySelector() { 
+  // Función vacía para que no se cree el botón de USD
+  return; 
 }
 
 function updateAllPrices() {
   document.querySelectorAll('[data-product-price]').forEach(el => {
-    const price = parseFloat(el.getAttribute('data-product-price'));
-    if (!isNaN(price)) el.textContent = window.currencyManager.formatPrice(price);
+    const p = parseFloat(el.getAttribute('data-product-price'));
+    if (!isNaN(p)) el.textContent = window.currencyManager.formatPrice(p);
   });
 }
-
-window.applyPricingToProducts = function(products) {
-  if (!window.currencyManager) return;
-  products.forEach(product => {
-    const el = document.querySelector(`[data-product-id="${product.id}"]`);
-    if (el) {
-      const priceEl = el.querySelector('[data-product-price]');
-      if (priceEl) {
-        priceEl.setAttribute('data-product-price', product.precio);
-        priceEl.textContent = window.currencyManager.formatPrice(product.precio);
-      }
-    }
-  });
-};
 
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', initCurrencySystem);
