@@ -1,44 +1,62 @@
 /**
- * CurrencyManager — Versión Fija en CUP para Dtalles Tejidos
+ * ═══════════════════════════════════════════════════════════════
+ * CurrencyManager — Versión Simplificada (Solo CUP)
+ * ═══════════════════════════════════════════════════════════════
  */
 
 class CurrencyManager {
   constructor(config = {}) {
     this.storageKey = 'dtalles_currency_prefs';
     
-    // Solo dejamos CUP como moneda activa
+    // Definimos solo CUP como moneda disponible
     this.currencies = {
       CUP: { name: 'Peso Cubano', symbol: 'cup', type: 'FIAT' }
     };
     
     this.activeCurrencies = ['CUP'];
-    // Forzamos CUP siempre
     this.currentCurrency = 'CUP';
-    
-    // Tasas de cambio: 1 a 1 para que no multiplique nada
-    this.rates = { 'CUP': 1.0, 'USD': 1.0 };
+    this.rates = { 'CUP': 1.0, 'USD': 1.0 }; // Tasa 1:1 para que el número no cambie
     this.lastUpdate = Date.now();
     this.listeners = [];
   }
 
-  // Carga siempre CUP por defecto
-  loadPreference() { return 'CUP'; }
-  savePreference() { /* No es necesario guardar nada */ }
-  async loadRates() { return this.rates; }
+  // Siempre devuelve CUP independientemente de lo guardado
+  loadPreference() {
+    return 'CUP';
+  }
+
+  savePreference() {
+    // No hace falta guardar cambios ya que es fija
+  }
+
+  async loadRates() {
+    // No necesita consultar APIs externas, usa tasa fija 1:1
+    return this.rates;
+  }
 
   setCurrency(currencyCode) {
+    // Bloqueamos cualquier cambio, siempre será CUP
     this.currentCurrency = 'CUP';
+    this.notifyListeners('currencyChanged', { 
+      currency: 'CUP',
+      symbol: 'cup'
+    });
     return true;
   }
 
-  // Función de conversión simplificada: devuelve el mismo número que recibe
+  /**
+   * Devuelve el mismo número que recibe (sin multiplicar por 125)
+   */
   convert(amount) {
     return amount; 
   }
 
-  // Formatea el precio: "3800 cup"
+  /**
+   * Formatea el precio con dos decimales y la palabra "cup" al final
+   */
   formatPrice(amount) {
-    if (!amount) return "0.00 cup";
+    if (amount === null || amount === undefined) return "0,00 cup";
+    
     const formatted = new Intl.NumberFormat('es-ES', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
@@ -47,18 +65,48 @@ class CurrencyManager {
     return `${formatted} cup`;
   }
 
-  getSymbol() { return 'cup'; }
-  getName() { return 'Peso Cubano'; }
+  formatNumber(value) {
+    return new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+
+  getSymbol() {
+    return 'cup';
+  }
+
+  getName() {
+    return 'Peso Cubano';
+  }
+
+  getAvailableCurrencies() {
+    return [{ code: 'CUP', name: 'Peso Cubano', symbol: 'cup', type: 'FIAT' }];
+  }
 
   onChange(callback) {
-    if (typeof callback === 'function') this.listeners.push(callback);
+    if (typeof callback === 'function') {
+      this.listeners.push(callback);
+    }
   }
 
   notifyListeners(event, data) {
-    this.listeners.forEach(l => l(event, data));
+    this.listeners.forEach(listener => {
+      try {
+        listener(event, data);
+      } catch (e) {
+        console.error('Error en listener:', e);
+      }
+    });
   }
 
   getState() {
-    return { currentCurrency: 'CUP', rates: this.rates };
+    return {
+      currentCurrency: 'CUP',
+      rates: this.rates,
+      availableCurrencies: this.getAvailableCurrencies(),
+    };
   }
 }
+
+console.log('✅ Gestor de moneda fija (CUP) cargado sin recortes');
