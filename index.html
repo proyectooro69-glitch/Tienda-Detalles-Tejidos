@@ -1498,5 +1498,41 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
+<script>
+  (function() {
+    function arreglarTienda() {
+      // 1. Borrar el selector de moneda (el botoncito de la derecha)
+      const selector = document.querySelector('.currency-sel') || 
+                       document.getElementById('currency-selector-container') ||
+                       document.querySelector('[id*="currency"]');
+      if (selector) selector.remove();
+
+      // 2. Forzar que todos los precios digan "cup"
+      document.querySelectorAll('[data-product-price], [data-price-amount], .prod-precio').forEach(el => {
+        let texto = el.innerText || el.textContent;
+        // Si el precio ya tiene "cup", no hacemos nada, si no, lo arreglamos
+        if (!texto.toLowerCase().includes('cup')) {
+          let numero = texto.replace(/[^0-9]/g, ''); // Dejamos solo los números
+          if (numero) {
+            // Lo ponemos bonito: 3.800,00 cup
+            let formateado = new Intl.NumberFormat('es-ES').format(numero);
+            el.textContent = formateado + " cup";
+          }
+        }
+      });
+    }
+
+    // Ejecutarlo al cargar y cada 2 segundos por si aparecen productos nuevos
+    window.addEventListener('load', arreglarTienda);
+    setInterval(arreglarTienda, 2000);
+    
+    // Bloquear cualquier intento de volver a USD
+    window.currencyManager = {
+      formatPrice: (n) => new Intl.NumberFormat('es-ES').format(n) + " cup",
+      getSymbol: () => 'cup',
+      currentCurrency: 'CUP'
+    };
+  })();
+</script>  
 </body>
 </html>
