@@ -1498,41 +1498,503 @@ if('serviceWorker' in navigator){
   });
 }
 </script>
-<script>
-  (function() {
-    function arreglarTienda() {
-      // 1. Borrar el selector de moneda (el botoncito de la derecha)
-      const selector = document.querySelector('.currency-sel') || 
-                       document.getElementById('currency-selector-container') ||
-                       document.querySelector('[id*="currency"]');
-      if (selector) selector.remove();
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     BLOQUE COMPLETO PARA PEGAR EN index.html (ANTES DEL </body>)
+     Línea 1510 o antes de </body>
+     
+     CONTIENE:
+     ✅ CSS para ocultar selectores de moneda
+     ✅ JavaScript completo para formatear precios CUP
+     ✅ Observer para cambios dinámicos
+     ✅ SetInterval para capturar precios tardíos
+     ✅ Console.log para debugging
+     
+     SIN DEPENDENCIAS EXTERNAS (no necesita currency-manager.js ni currency-integration.js)
+     ═══════════════════════════════════════════════════════════════════════════ -->
 
-      // 2. Forzar que todos los precios digan "cup"
-      document.querySelectorAll('[data-product-price], [data-price-amount], .prod-precio').forEach(el => {
-        let texto = el.innerText || el.textContent;
-        // Si el precio ya tiene "cup", no hacemos nada, si no, lo arreglamos
-        if (!texto.toLowerCase().includes('cup')) {
-          let numero = texto.replace(/[^0-9]/g, ''); // Dejamos solo los números
-          if (numero) {
-            // Lo ponemos bonito: 3.800,00 cup
-            let formateado = new Intl.NumberFormat('es-ES').format(numero);
-            el.textContent = formateado + " cup";
-          }
-        }
-      });
+<!-- ┌─────────────────────────────────────────────────────────────────────────┐
+     │ SECCIÓN 1: ESTILOS CSS (OCULTAR SELECTORES)                             │
+     └─────────────────────────────────────────────────────────────────────────┘ -->
+
+<style>
+/* ════════════════════════════════════════════════════════════════════════════ */
+/* OCULTAR COMPLETAMENTE CUALQUIER SELECTOR DE MONEDA                          */
+/* ════════════════════════════════════════════════════════════════════════════ */
+
+/* Ocultar por ID */
+#currency-selector-container,
+#currency-selector,
+#currencySelector,
+#money-selector,
+#divisa-selector {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  position: absolute !important;
+  pointer-events: none !important;
+}
+
+/* Ocultar por clase */
+.currency-selector,
+.currency-sel,
+.divisa-selector,
+.money-selector,
+.selector-moneda,
+.currency-container,
+.currency-selector-container,
+.currency-select,
+[class*="currency-selector"],
+[class*="currency-sel"],
+[class*="divisa-selector"],
+[class*="money-selector"] {
+  display: none !important;
+}
+
+/* Ocultar por atributo */
+[id*="currency-selector"],
+[class*="currency-selector"],
+[data-currency-selector],
+[aria-label*="currency"],
+[aria-label*="moneda"],
+[title*="currency"],
+[title*="moneda"] {
+  display: none !important;
+}
+
+/* Ocultar selectores <select> de moneda */
+select[name*="currency"],
+select[name*="moneda"],
+select[id*="currency"],
+select[class*="currency"] {
+  display: none !important;
+}
+
+/* Ocultar botones/divs que contengan divisas */
+button[class*="currency"],
+button[aria-label*="currency"],
+div[class*="currency-selector"],
+div[id*="currency-selector"] {
+  display: none !important;
+}
+
+/* Asegurar que ningún $ sea visible si no es de CUP */
+/* (esto no afecta al texto dentro de precios, solo elementos decorativos) */
+span[class*="currency-symbol"]:not([data-cup]),
+span[class*="money-symbol"]:not([data-cup]) {
+  display: none !important;
+}
+
+/* ════════════════════════════════════════════════════════════════════════════ */
+/* FIN: OCULTAR SELECTORES                                                     */
+/* ════════════════════════════════════════════════════════════════════════════ */
+</style>
+
+<!-- ┌─────────────────────────────────────────────────────────────────────────┐
+     │ SECCIÓN 2: JAVASCRIPT COMPLETO (FORMATEAR PRECIOS Y GESTIONAR CAMBIOS)   │
+     └─────────────────────────────────────────────────────────────────────────┘ -->
+
+<script>
+(function() {
+  'use strict';
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // INICIALIZACIÓN
+  // ═════════════════════════════════════════════════════════════════════════════
+  
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║     🇨🇺 SISTEMA DE MONEDA: CUP EXCLUSIVO ACTIVADO        ║');
+  console.log('║     Tiempo: ' + new Date().toLocaleTimeString() + '                      ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 1: Crear mock de currencyManager (por si algo lo necesita)
+  // ═════════════════════════════════════════════════════════════════════════════
+  
+  window.currencyManager = window.currencyManager || {
+    currentCurrency: 'CUP',
+    currencies: { CUP: { symbol: 'cup' } },
+    loadPreference: () => 'CUP',
+    savePreference: () => { },
+    async loadRates() { return { CUP: 1.0 }; },
+    setCurrency: () => true,
+    convert: (amount) => amount,
+    formatPrice: (amount) => {
+      if (!amount) return "0,00 cup";
+      const num = new Intl.NumberFormat('es-ES', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2
+      }).format(amount);
+      return `${num} cup`;
+    },
+    getSymbol: () => 'cup',
+    getAvailableCurrencies: () => [{ code: 'CUP', symbol: 'cup' }],
+    onChange: () => { },
+    getState: () => ({ currentCurrency: 'CUP' })
+  };
+
+  console.log('✅ currencyManager mock inicializado');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 2: Función para limpiar y formatear precios
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  /**
+   * Limpia un precio de Supabase y lo formatea como CUP
+   * Entrada: "3800" | "3800 cup" | "$50" | "€46.50" | 3800 | "3.800,00"
+   * Salida: "3.800,00 cup"
+   */
+  function limpiarYFormatearCUP(precioOriginal) {
+    // Si está vacío o es null/undefined
+    if (precioOriginal === null || precioOriginal === undefined || precioOriginal === '') {
+      return '0,00 cup';
     }
 
-    // Ejecutarlo al cargar y cada 2 segundos por si aparecen productos nuevos
-    window.addEventListener('load', arreglarTienda);
-    setInterval(arreglarTienda, 2000);
+    // Convertir a string y limpiar espacios
+    let precioStr = String(precioOriginal).trim();
+
+    // Si ya está correctamente formateado, no hacer nada
+    if (precioStr.match(/^\d{1,3}(\.\d{3})*,\d{2} cup$/)) {
+      return precioStr;
+    }
+
+    // Eliminar símbolos de moneda y letras (mantener solo números y separadores)
+    // Esto quita: $, €, ₱, cup, EUR, USD, etc.
+    precioStr = precioStr.replace(/[^\d.,]/g, '');
+
+    // Si quedó vacío después de limpiar, retornar 0
+    if (!precioStr) {
+      return '0,00 cup';
+    }
+
+    // Normalizar separadores:
+    // Si tiene comas y puntos, asumir que el punto es decimal (ej: "1.234.567.89")
+    // o que la coma es decimal (ej: "1.234,89")
     
-    // Bloquear cualquier intento de volver a USD
-    window.currencyManager = {
-      formatPrice: (n) => new Intl.NumberFormat('es-ES').format(n) + " cup",
-      getSymbol: () => 'cup',
-      currentCurrency: 'CUP'
+    // Contar puntos y comas
+    const puntosCount = (precioStr.match(/\./g) || []).length;
+    const comasCount = (precioStr.match(/,/g) || []).length;
+
+    let numero;
+
+    if (puntosCount > 1) {
+      // Múltiples puntos: "1.234.567.89" → 1234567.89
+      numero = precioStr.replace(/\./g, '').replace(',', '.');
+    } else if (puntosCount === 1 && comasCount === 0) {
+      // Un punto sin comas: podría ser "1234.56" (decimal) o "1.234" (separador)
+      const partes = precioStr.split('.');
+      if (partes[1].length === 2) {
+        // Es decimal: "1234.56"
+        numero = parseFloat(precioStr);
+      } else {
+        // Es separador: "1.234" → 1234
+        numero = parseFloat(precioStr.replace('.', ''));
+      }
+    } else if (comasCount === 1 && puntosCount === 0) {
+      // Una coma sin puntos: "1234,56" → 1234.56
+      numero = parseFloat(precioStr.replace(',', '.'));
+    } else if (puntosCount === 1 && comasCount === 1) {
+      // Ambos: asumir formato europeo "1.234,56"
+      numero = parseFloat(precioStr.replace('.', '').replace(',', '.'));
+    } else {
+      // Sin separadores: "3800" → 3800
+      numero = parseFloat(precioStr);
+    }
+
+    // Validar que sea un número válido
+    if (isNaN(numero)) {
+      console.warn('⚠️ Precio inválido, no se pudo parsear:', precioOriginal);
+      return '0,00 cup';
+    }
+
+    // Validar que sea positivo
+    if (numero < 0) {
+      console.warn('⚠️ Precio negativo ignorado:', precioOriginal);
+      return '0,00 cup';
+    }
+
+    // Redondear a 2 decimales
+    numero = Math.round(numero * 100) / 100;
+
+    // Formatear con separadores de miles y coma decimal (formato español)
+    const formateado = new Intl.NumberFormat('es-ES', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    }).format(numero);
+
+    return `${formateado} cup`;
+  }
+
+  console.log('✅ Función limpiarYFormatearCUP() lista');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 3: Función para actualizar todos los precios en la página
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  function actualizarTodosLosPrecios() {
+    let contadores = {
+      actualizados: 0,
+      encontrados: 0,
+      intentos: 0
     };
-  })();
+
+    contadores.intentos++;
+
+    // Selectores donde pueden estar los precios
+    const selectoresPrecios = [
+      '[data-product-price]',       // Atributo data
+      '[data-price-amount]',        // Variante
+      '[data-modal-price]',         // En modales
+      '[data-precio]',              // Español
+      '.prod-precio',               // Clase común
+      '.producto-precio',           // Variante
+      '.price',                     // Inglés
+      '.precio',                    // Español
+      '.product-price',             // Variante
+      'span[class*="precio"]',      // Spans con precio
+      'span[class*="price"]',       // Spans con price
+      '.costo',                     // Alternativa
+      '[class*="amount"]',          // Amount
+      '[class*="valor"]'            // Valor
+    ];
+
+    // Recorrer cada selector
+    selectoresPrecios.forEach(selector => {
+      try {
+        const elementos = document.querySelectorAll(selector);
+
+        elementos.forEach(el => {
+          // Saltar si ya fue procesado
+          if (el.dataset.procesadoCup === 'true') {
+            return;
+          }
+
+          contadores.encontrados++;
+
+          // Obtener el precio del atributo data o del contenido
+          let precioOriginal = null;
+
+          if (el.dataset.productPrice) {
+            precioOriginal = el.dataset.productPrice;
+          } else if (el.dataset.priceAmount) {
+            precioOriginal = el.dataset.priceAmount;
+          } else if (el.dataset.modalPrice) {
+            precioOriginal = el.dataset.modalPrice;
+          } else if (el.dataset.precio) {
+            precioOriginal = el.dataset.precio;
+          } else {
+            // Obtener del texto
+            precioOriginal = el.textContent || el.innerText;
+          }
+
+          // Procesar si hay contenido
+          if (precioOriginal) {
+            const precioFormateado = limpiarYFormatearCUP(precioOriginal);
+            
+            // Solo actualizar si cambió
+            if (el.textContent !== precioFormateado) {
+              el.textContent = precioFormateado;
+              el.dataset.procesadoCup = 'true';
+              contadores.actualizados++;
+            }
+          }
+        });
+      } catch (e) {
+        console.warn('⚠️ Error procesando selector:', selector, e.message);
+      }
+    });
+
+    if (contadores.encontrados > 0 || contadores.intentos <= 3) {
+      console.log(`⏱️  Intento #${contadores.intentos}: ${contadores.actualizados}/${contadores.encontrados} precios actualizados`);
+    }
+
+    return contadores;
+  }
+
+  console.log('✅ Función actualizarTodosLosPrecios() lista');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 4: Limpiar localStorage de preferencias de divisas previas
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  try {
+    const keysToRemove = [
+      'dtalles_currency_prefs',
+      'currency_preference',
+      'selected_currency',
+      'divisa_preferida',
+      'currency_selected'
+    ];
+
+    keysToRemove.forEach(key => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+        console.log(`🧹 Limpiado localStorage: ${key}`);
+      }
+    });
+  } catch (e) {
+    console.warn('⚠️ No se pudo acceder a localStorage:', e.message);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 5: Remover elementos del DOM que no deseamos
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  function removerSelectoresDeMonedasVisuales() {
+    const elementosARemover = document.querySelectorAll(
+      '#currency-selector-container, ' +
+      '#currency-selector, ' +
+      '.currency-sel, ' +
+      '.currency-selector, ' +
+      '[class*="currency-selector"], ' +
+      '[id*="currency-selector"]'
+    );
+
+    elementosARemover.forEach(el => {
+      try {
+        el.remove();
+        console.log('🗑️  Removido elemento:', el.id || el.className);
+      } catch (e) {
+        // Ignorar si no se puede remover
+      }
+    });
+  }
+
+  removerSelectoresDeMonedasVisuales();
+  console.log('✅ Selectores visuales removidos');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 6: Ejecutar inicialmente
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  actualizarTodosLosPrecios();
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 7: setInterval para capturar precios que cargan dinámicamente
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  const intervaloActualizacion = setInterval(() => {
+    const resultado = actualizarTodosLosPrecios();
+    
+    // Si ya no hay cambios después de 5 intentos, detener el interval
+    if (resultado.actualizados === 0 && resultado.intentos > 5) {
+      clearInterval(intervaloActualizacion);
+      console.log('✅ Actualización de precios completada (no hay más cambios)');
+    }
+  }, 2000); // Cada 2 segundos
+
+  // Detener el interval después de 30 segundos (máximo)
+  setTimeout(() => {
+    clearInterval(intervaloActualizacion);
+    console.log('✅ Sistema de actualización detenido (timeout de 30s)');
+  }, 30000);
+
+  console.log('✅ SetInterval para actualizaciones dinámicas (cada 2s) activo');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 8: MutationObserver para detectar cambios en tiempo real
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  const config = {
+    childList: true,      // Detectar nodos nuevos
+    subtree: true,        // Revisar descendientes
+    characterData: true,  // Detectar cambios de texto
+    attributes: true,     // Detectar cambios de atributos
+    attributeFilter: ['data-product-price', 'data-price-amount', 'data-modal-price'] // Solo atributos de precio
+  };
+
+  const observer = new MutationObserver((mutations) => {
+    let debeActualizar = false;
+
+    mutations.forEach((mutation) => {
+      // Si se añadieron nodos (nuevos productos)
+      if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+        debeActualizar = true;
+      }
+      // Si cambió un atributo de precio
+      if (mutation.type === 'attributes' && mutation.attributeName && mutation.attributeName.includes('price')) {
+        debeActualizar = true;
+      }
+      // Si cambió el contenido de texto y contiene números
+      if (mutation.type === 'characterData') {
+        const texto = mutation.target.textContent || '';
+        if (/\d/.test(texto)) {
+          debeActualizar = true;
+        }
+      }
+    });
+
+    if (debeActualizar) {
+      actualizarTodosLosPrecios();
+    }
+  });
+
+  // Observar cambios en el body
+  observer.observe(document.body, config);
+  console.log('✅ MutationObserver para cambios en tiempo real activo');
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 9: Hook en buyWA si existe (para WhatsApp)
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  if (typeof window.buyWA === 'function') {
+    const buyWAOriginal = window.buyWA;
+    window.buyWA = function(nombre, precio, imagenUrl) {
+      // El precio ya está formateado en la página, solo log
+      console.log('📱 Compartiendo por WhatsApp:', { nombre, precio });
+      return buyWAOriginal.call(this, nombre, precio, imagenUrl);
+    };
+    console.log('✅ Función buyWA() interceptada');
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // PASO 10: Listener para cuando el DOM esté completamente cargado
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  if (document.readyState === 'complete') {
+    actualizarTodosLosPrecios();
+  } else {
+    window.addEventListener('load', actualizarTodosLosPrecios);
+  }
+
+  // ═════════════════════════════════════════════════════════════════════════════
+  // VERIFICACIÓN FINAL
+  // ═════════════════════════════════════════════════════════════════════════════
+
+  console.log('');
+  console.log('╔════════════════════════════════════════════════════════════╗');
+  console.log('║  ✅ SISTEMA CUP COMPLETAMENTE INICIALIZADO                  ║');
+  console.log('║  ✅ Divisas activas: SOLO CUP                              ║');
+  console.log('║  ✅ Selector de USD/EUR/etc: OCULTO                        ║');
+  console.log('║  ✅ Precios formateados: 3.800,00 cup                      ║');
+  console.log('║  ✅ Observer y setInterval activos                         ║');
+  console.log('║  🎯 Estado: LISTO PARA USAR                               ║');
+  console.log('╚════════════════════════════════════════════════════════════╝');
+  console.log('');
+
+})();
+</script>
+
+<!-- ═══════════════════════════════════════════════════════════════════════════
+     FIN: BLOQUE COMPLETO CUP
+     
+     ¿QUÉ HACER?
+     1. Copiar TODO esto (desde <style> hasta </script>)
+     2. Pegarlo en index.html ANTES de </body>
+     3. Guardar
+     4. Subir a GitHub
+     5. Verificar en DevTools Console que aparecen los logs
+     
+     ¿NO FUNCIONA?
+     - Abre DevTools (F12) → Console
+     - Busca errores rojos
+     - Si no ves logs "SISTEMA CUP COMPLETAMENTE INICIALIZADO", 
+       recarga con Ctrl+Shift+R (hard refresh)
+     
+     ═══════════════════════════════════════════════════════════════════════════ -->  
 </script>  
 </body>
 </html>
