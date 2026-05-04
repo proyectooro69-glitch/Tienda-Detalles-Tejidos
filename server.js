@@ -1,127 +1,324 @@
-const http  = require('http');
-const https = require('https');
-const fs    = require('fs');
-const path  = require('path');
-const url   = require('url');
+// ═════════════════════════════════════════════════════════════════════════════
+// FUNCIONES MEJORADAS PARA WHATSAPP Y OG TAGS
+// Copiar y pegar estas funciones en tu proyecto
+// ═════════════════════════════════════════════════════════════════════════════
 
-const PORT    = process.env.PORT || 5000;
-const HOST    = '0.0.0.0';
-const ROOT    = __dirname;
-
-/* ── Credenciales Supabase (anon key, pública) ───────────────────── */
-const SB_HOST = 'zkiqgciijhqizhxkryea.supabase.co';
-const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraXFnY2lpamhxaXpoeGtyeWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc0NzE1OTQsImV4cCI6MjA5MzA0NzU5NH0.6UM3YjNbx9KnmPbVhekaAEJ5zbV_rj2WIhq8OnVozyM';
-
-const MIME = {
-  '.html':'.html','.js':'application/javascript; charset=utf-8',
-  '.mjs':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
-  '.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8',
-  '.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif',
-  '.svg':'image/svg+xml','.ico':'image/x-icon','.webp':'image/webp','.txt':'text/plain; charset=utf-8',
-};
-const MIME_TYPES = {
-  '.html':'text/html; charset=utf-8','.js':'application/javascript; charset=utf-8',
-  '.mjs':'application/javascript; charset=utf-8','.css':'text/css; charset=utf-8',
-  '.json':'application/json; charset=utf-8','.webmanifest':'application/manifest+json; charset=utf-8',
-  '.png':'image/png','.jpg':'image/jpeg','.jpeg':'image/jpeg','.gif':'image/gif',
-  '.svg':'image/svg+xml','.ico':'image/x-icon','.webp':'image/webp','.txt':'text/plain; charset=utf-8',
-};
-
-const BLOCKED = [
-  /^\/\.env/i, /^\/\.git/i, /^\/package(-lock)?\.json$/i,
-  /^\/node_modules/i, /^\/.local/i, /^\/replit\.md$/i,
-];
-
-function esc(str) {
-  return String(str||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+/**
+ * ✨ NUEVA FUNCIÓN
+ * Convierte cualquier URL de imagen a URL absoluta
+ * 
+ * ¿Por qué es importante?
+ * - WhatsApp necesita URLs absolutas para descargar y mostrar imágenes
+ * - Las URLs relativas no funcionan con Open Graph Meta Tags
+ * 
+ * @param {string} imgUrl - URL de la imagen (puede ser relativa o absoluta)
+ * @returns {string} - URL absoluta de la imagen
+ */
+function getAbsoluteImageUrl(imgUrl) {
+  if (!imgUrl) return '';
+  
+  // Si ya es una URL absoluta, retornarla tal cual
+  if (imgUrl.startsWith('http://') || imgUrl.startsWith('https://')) {
+    return imgUrl;
+  }
+  
+  // Si es una URL relativa, construir la absoluta
+  var protocol = window.location.protocol;  // http: o https:
+  var host = window.location.host;           // tudominio.com o localhost:3000
+  var baseUrl = protocol + '//' + host;
+  
+  // Si comienza con /, es relativa a la raíz del sitio
+  if (imgUrl.startsWith('/')) {
+    return baseUrl + imgUrl;
+  }
+  
+  // Otro caso: construir desde la ruta actual
+  var path = window.location.pathname;
+  var directory = path.substring(0, path.lastIndexOf('/'));
+  return baseUrl + directory + '/' + imgUrl;
 }
 
-/* Consulta Supabase para obtener datos del producto por nombre */
-function fetchProduct(nombre, cb) {
-  const reqPath = '/rest/v1/productos?nombre=eq.' + encodeURIComponent(nombre) +
-                  '&select=nombre,precio,imagen_url,descripcion&limit=1';
-  const opts = {
-    hostname: SB_HOST, path: reqPath, method: 'GET',
-    headers: { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Accept': 'application/json' }
-  };
-  const req = https.request(opts, res => {
-    let data = '';
-    res.on('data', c => data += c);
-    res.on('end', () => { try { cb(null, JSON.parse(data)[0] || null); } catch(e){ cb(e, null); } });
+/**
+ * 🔧 FUNCIÓN MEJORADA: setOGTags(p)
+ * 
+ * Actualiza los Open Graph Meta Tags para que:
+ * 1. WhatsApp muestre una miniatura del producto
+ * 2. Facebook y otros sitios muestren la información correcta
+ * 3. Twitter Card muestre los datos actualizados
+ * 
+ * ¡IMPORTANTE! Esta función debe ser llamada ANTES de compartir por WhatsApp
+ * 
+ * @param {object} p - Objeto del producto con propiedades:
+ *   - nombre: string
+ *   - precio: number
+ *   - imagen_url: string (URL de la imagen)
+ *   - descripcion: string
+ */
+function setOGTags(p) {
+  // Validar que el producto no sea nulo
+  if (!p) return;
+  
+  // Construir URLs base
+  var base = window.location.origin + window.location.pathname;
+  var prodUrl = base + (p.nombre ? '?prod=' + encodeURIComponent(p.nombre) : '');
+  
+  // ✨ CLAVE: Obtener URL absoluta de la imagen
+  var img = p.imagen_url || '';
+  var absoluteImageUrl = getAbsoluteImageUrl(img);
+  
+  // Construir descripción
+  var desc = (p.descripcion || 'Tejido hecho a mano con amor') + 
+             (p.precio ? ' — Precio: ' + p.precio : '');
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Actualizar Open Graph Meta Tags (para WhatsApp y Facebook)
+  // ═══════════════════════════════════════════════════════════════════════════
+  document.getElementById('og-title').setAttribute('content', p.nombre + ' — Dtalles Tejidos');
+  document.getElementById('og-description').setAttribute('content', desc);
+  
+  // ✨ IMPORTANTE: og:image con URL ABSOLUTA
+  document.getElementById('og-image').setAttribute('content', absoluteImageUrl);
+  
+  // Para conexiones HTTPS (la mayoría de navegadores modernos)
+  document.getElementById('og-image-secure').setAttribute('content', absoluteImageUrl);
+  
+  // URL del producto (para que WhatsApp enlace correctamente)
+  document.getElementById('og-url').setAttribute('content', prodUrl);
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Actualizar Twitter Card Meta Tags (para compatibilidad con Twitter/X)
+  // ═══════════════════════════════════════════════════════════════════════════
+  document.getElementById('tw-title').setAttribute('content', p.nombre + ' — Dtalles Tejidos');
+  document.getElementById('tw-desc').setAttribute('content', desc);
+  document.getElementById('tw-image').setAttribute('content', absoluteImageUrl);
+  
+  // Actualizar título de la página
+  document.title = p.nombre + ' — Dtalles Tejidos';
+  
+  // 🔍 Log en consola para debugging
+  console.log('✅ OG Tags actualizados:', {
+    titulo: p.nombre,
+    imagen: absoluteImageUrl,
+    url: prodUrl,
+    timestamp: new Date().toISOString()
   });
-  req.on('error', e => cb(e, null));
-  req.end();
 }
 
-/* Sirve index.html con OG tags inyectados */
-function serveIndex(res, prod) {
-  const indexPath = path.join(ROOT, 'index.html');
-
-  function injectAndSend(product) {
-    fs.readFile(indexPath, 'utf8', (err, html) => {
-      if (err) { res.writeHead(500); return res.end('Error'); }
-      if (product) {
-        const imgUrl  = esc(product.imagen_url || '');
-        const title   = esc(product.nombre || '') + ' — Dtalles Tejidos';
-        const precio  = product.precio ? ' Precio: ' + esc(product.precio) + '.' : '';
-        const desc    = esc((product.descripcion || 'Tejido artesanal hecho con amor.') + precio);
-        html = html
-          .replace(/(<meta property="og:title"[^>]*content=")([^"]*)(")/,      '$1' + title  + '$3')
-          .replace(/(<meta property="og:description"[^>]*content=")([^"]*)(")/,'$1' + desc   + '$3')
-          .replace(/(<meta property="og:image"[^>]*content=")([^"]*)(")/,      '$1' + imgUrl + '$3')
-          .replace(/(<meta name="twitter:title"[^>]*content=")([^"]*)(")/,     '$1' + title  + '$3')
-          .replace(/(<meta name="twitter:image"[^>]*content=")([^"]*)(")/,     '$1' + imgUrl + '$3');
-      }
-      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' });
-      res.end(html);
-    });
-  }
-
-  if (prod) {
-    fetchProduct(prod, (err, product) => injectAndSend(product));
-  } else {
-    injectAndSend(null);
-  }
+/**
+ * 🔄 FUNCIÓN MEJORADA: resetOGTags()
+ * 
+ * Resetea los Open Graph Meta Tags a los valores por defecto
+ * Se llama cuando se cierra el modal del producto
+ */
+function resetOGTags() {
+  var base = window.location.origin + window.location.pathname;
+  
+  // Resetear Open Graph Meta Tags
+  document.getElementById('og-title').setAttribute('content', 'Dtalles — Tejidos con Amor');
+  document.getElementById('og-description').setAttribute('content', 'Producciones hechas a mano, con cariño para ti y los tuyos');
+  document.getElementById('og-image').setAttribute('content', '');
+  document.getElementById('og-image-secure').setAttribute('content', '');
+  document.getElementById('og-url').setAttribute('content', base);
+  
+  // Resetear Twitter Card Meta Tags
+  document.getElementById('tw-title').setAttribute('content', 'Dtalles — Tejidos con Amor');
+  document.getElementById('tw-desc').setAttribute('content', 'Producciones hechas a mano, con cariño para ti y los tuyos');
+  document.getElementById('tw-image').setAttribute('content', '');
+  
+  // Resetear título de la página
+  document.title = 'Dtalles — Tejidos con Amor';
+  
+  console.log('✅ OG Tags reseteados a valores por defecto');
 }
 
-const server = http.createServer((req, res) => {
-  if (req.method === 'OPTIONS') {
-    res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'GET' });
-    return res.end();
+/**
+ * 📱 FUNCIÓN MEJORADA: buyWA(nombre, precio, imgUrl)
+ * 
+ * Mejoras principales:
+ * 1. Actualiza los OG Tags ANTES de abrir WhatsApp
+ * 2. Construye un mensaje con formato WhatsApp (negritas, emojis)
+ * 3. Incluye URL absoluta del producto
+ * 4. Log detallado para debugging
+ * 
+ * ¡ESTA ES LA FUNCIÓN CLAVE QUE SOLUCIONA EL PROBLEMA!
+ * 
+ * @param {string} nombre - Nombre del producto
+ * @param {number} precio - Precio del producto
+ * @param {string} imgUrl - URL de la imagen del producto
+ */
+function buyWA(nombre, precio, imgUrl) {
+  console.log('📱 Iniciando compartir por WhatsApp...', { nombre, precio });
+  
+  // ✨ CLAVE: Actualizar OG Tags ANTES de abrir WhatsApp
+  // Esto asegura que cuando el servidor procese el compartir,
+  // los meta tags ya estén con la información correcta
+  if (window._modalProduct) {
+    setOGTags(window._modalProduct);
+    console.log('✅ OG Tags actualizados antes de compartir');
   }
-  if (req.method !== 'GET') {
-    res.writeHead(405, { 'Content-Type': 'text/plain' });
-    return res.end('Method Not Allowed');
+  
+  // Construir URLs
+  var base = window.location.origin + window.location.pathname;
+  var prodUrl = base + '?prod=' + encodeURIComponent(nombre || '');
+  var precioFmt = formatPrecio(precio);
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Construir mensaje con formato WhatsApp
+  // ═══════════════════════════════════════════════════════════════════════════
+  var msg = 'Hola 👋\n\n';
+  msg += 'Me interesa este producto:\n';
+  msg += '*' + nombre + '*';                    // ← Negritas en WhatsApp
+  
+  if (precioFmt) {
+    msg += '\n\nPrecio: *' + precioFmt + '*';  // ← Negritas en WhatsApp
   }
-
-  const parsed   = url.parse(req.url, true);
-  let pathname   = decodeURIComponent(parsed.pathname || '/');
-
-  if (BLOCKED.some(re => re.test(pathname))) {
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
-    return res.end('Forbidden');
-  }
-
-  /* Raíz o SPA routes → servir index con OG del producto si hay ?prod= */
-  if (pathname === '/') {
-    return serveIndex(res, parsed.query.prod || '');
-  }
-
-  const resolved = path.resolve(ROOT, '.' + pathname);
-  if (!resolved.startsWith(ROOT)) {
-    res.writeHead(403, { 'Content-Type': 'text/plain' });
-    return res.end('Forbidden');
-  }
-
-  fs.stat(resolved, (err, stats) => {
-    if (err || !stats.isFile()) return serveIndex(res, parsed.query.prod || '');
-    const ext  = path.extname(resolved).toLowerCase();
-    const type = MIME_TYPES[ext] || 'application/octet-stream';
-    res.writeHead(200, { 'Content-Type': type, 'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff' });
-    fs.createReadStream(resolved).pipe(res);
+  
+  msg += '\n\nPuedes verlo aquí: ' + prodUrl;
+  msg += '\n\n¿Podrías ayudarme? 😊';
+  
+  // 🔍 Log detallado para debugging
+  console.log('📱 Compartiendo por WhatsApp:', {
+    nombre: nombre,
+    precio: precioFmt,
+    imagen: imgUrl,
+    urlProducto: prodUrl,
+    mensaje: msg,
+    timestamp: new Date().toISOString()
   });
-});
+  
+  // ═══════════════════════════════════════════════════════════════════════════
+  // Abrir WhatsApp
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Nota: Reemplaza WA_NUM con tu número de WhatsApp
+  // Formato: país + número sin + ni espacios
+  // Ejemplo: 50247827800 (Guatemala)
+  var whatsappUrl = 'https://wa.me/' + WA_NUM + '?text=' + encodeURIComponent(msg);
+  
+  window.open(whatsappUrl, '_blank');
+  
+  console.log('✅ WhatsApp abierto:', whatsappUrl.substring(0, 50) + '...');
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`Dtalles server running at http://${HOST}:${PORT}`);
-});
+// ═════════════════════════════════════════════════════════════════════════════
+// INTEGRACIÓN CON MODAL (cómo se llama buyWA)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/*
+Cuando abres el modal del producto, asegúrate de que en el evento onclick
+del botón de WhatsApp se haga así:
+
+// ✅ CORRECTO:
+document.getElementById('mp-wa-btn').onclick = function() {
+  buyWA(p.nombre, p.precio, p.imagen_url);
+};
+
+// Antes de abrir el modal:
+setOGTags(p);  // ← Actualizar OG tags cuando se abre el producto
+
+// Cuando se cierra el modal:
+resetOGTags();  // ← Resetear OG tags cuando se cierra
+*/
+
+// ═════════════════════════════════════════════════════════════════════════════
+// REFERENCIA RÁPIDA: Meta Tags necesarios en <head>
+// ═════════════════════════════════════════════════════════════════════════════
+
+/*
+
+<!-- Open Graph Meta Tags (NECESARIOS para WhatsApp) -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Dtalles — Tejidos con Amor">
+<meta property="og:title" id="og-title" content="Dtalles — Tejidos con Amor">
+<meta property="og:description" id="og-description" content="Producciones hechas a mano, con cariño para ti y los tuyos">
+
+<!-- ✨ IMPORTANTE: Con URL ABSOLUTA -->
+<meta property="og:image" id="og-image" content="">
+<meta property="og:image:secure_url" id="og-image-secure" content="">
+<meta property="og:image:type" id="og-image-type" content="image/jpeg">
+<meta property="og:image:width" id="og-image-width" content="1200">
+<meta property="og:image:height" id="og-image-height" content="630">
+
+<meta property="og:url" id="og-url" content="">
+<meta property="og:locale" content="es_GT">
+
+<!-- Twitter Card Meta Tags (para compatibilidad) -->
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" id="tw-title" content="Dtalles — Tejidos con Amor">
+<meta name="twitter:description" id="tw-desc" content="Producciones hechas a mano, con cariño para ti y los tuyos">
+<meta name="twitter:image" id="tw-image" content="">
+
+*/
+
+// ═════════════════════════════════════════════════════════════════════════════
+// FUNCIÓN AUXILIAR: Formatear precio (si no existe)
+// ═════════════════════════════════════════════════════════════════════════════
+
+/*
+Si no tienes esta función, cópiala:
+
+function formatPrecio(precio) {
+  if (!precio) return '';
+  var num = parseFloat(precio);
+  return 'Q ' + num.toFixed(2);
+}
+*/
+
+// ═════════════════════════════════════════════════════════════════════════════
+// TESTING: Cómo verificar que funciona
+// ═════════════════════════════════════════════════════════════════════════════
+
+/*
+
+1. En la consola del navegador (F12), ejecuta:
+
+   // Ver la URL absoluta de la imagen actual
+   document.querySelector('meta[property="og:image"]').getAttribute('content')
+   
+   // Debe mostrar algo como:
+   // https://zkiqgciijhqizhxkryea.supabase.co/storage/v1/object/public/product-images/...
+   // o
+   // https://tudominio.com/images/producto.jpg
+
+2. Para probar el compartir:
+   - Abre un producto en la tienda
+   - Click en "Comprar por WhatsApp"
+   - En WhatsApp Web (web.whatsapp.com), verifica que la miniatura aparezca ✅
+
+3. Para verificar con herramientas online:
+   - https://www.opengraph.xyz/ - Pega tu URL del producto
+   - https://www.facebook.com/sharing/debugger/ - Debugger de Facebook
+   - Ambas deben mostrar la imagen del producto
+
+*/
+
+// ═════════════════════════════════════════════════════════════════════════════
+// NOTAS IMPORTANTES
+// ═════════════════════════════════════════════════════════════════════════════
+
+/*
+
+✅ COMPROBACIONES ANTES DE SUBIR A PRODUCCIÓN:
+
+1. ¿Las imágenes están en una URL accesible públicamente?
+   - Si usan Supabase Storage: ✅ Suelen ser públicas por defecto
+   - Si usan un servidor propio: ✅ Asegurar que NO requieran autenticación
+
+2. ¿El servidor devuelve los headers correctos?
+   - Content-Type: image/jpeg (o image/png, etc)
+   - Access-Control-Allow-Origin: * (si hay CORS)
+
+3. ¿Funcionan las URLs en el navegador?
+   - Abre la URL en el navegador: ¿Se ve la imagen? ✅
+   - Si no se ve, el problema está en la URL o acceso
+
+4. ¿Está correctamente formateada la URL absoluta?
+   - Debe empezar con https:// (no http://)
+   - No debe tener espacios
+   - No debe tener caracteres especiales sin encode
+
+5. ¿Los meta tags se actualizan correctamente?
+   - Abre DevTools (F12) → Elements → Search "og-image"
+   - Verifica que content="" tenga la URL correcta ✅
+
+*/
