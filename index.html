@@ -13,6 +13,10 @@
 <meta property="og:title" id="og-title" content="Dtalles — Tejidos con Amor">
 <meta property="og:description" id="og-description" content="Producciones hechas a mano, con cariño para ti y los tuyos">
 <meta property="og:image" id="og-image" content="">
+<meta property="og:image:secure_url" id="og-image-secure" content="">
+<meta property="og:image:type" id="og-image-type" content="image/jpeg">
+<meta property="og:image:width" id="og-image-width" content="1200">
+<meta property="og:image:height" id="og-image-height" content="630">
 <meta property="og:url" id="og-url" content="">
 <meta property="og:locale" content="es_GT">
 <!-- Twitter Card -->
@@ -1044,26 +1048,47 @@ function cambiarDivisa(d){
 }
 
 function buyWA(n,precio,imgUrl){
+  if(window._modalProduct){
+    setOGTags(window._modalProduct);
+  }
   var base=window.location.origin+window.location.pathname;
   var prodUrl=base+'?prod='+encodeURIComponent(n||'');
   var precioFmt=formatPrecio(precio);
-  var msg='Hola, me interesa este producto: '+n+'.'+(precioFmt?' Precio: '+precioFmt+'.':'')+' Puedes verlo aqui: '+prodUrl;
+  var msg='Hola 👋\n\nMe interesa este producto:\n*'+n+'*'+(precioFmt?'\n\nPrecio: *'+precioFmt+'*':'')+'\n\nPuedes verlo aquí: '+prodUrl+'\n\n¿Podrías ayudarme? 😊';
+  console.log('📱 Compartiendo por WhatsApp:',{nombre:n,precio:precioFmt,imagen:imgUrl,url:prodUrl});
   window.open('https://wa.me/'+WA_NUM+'?text='+encodeURIComponent(msg),'_blank');
 }
 
+
+function getAbsoluteImageUrl(imgUrl){
+  if(!imgUrl) return '';
+  if(imgUrl.startsWith('http://')||imgUrl.startsWith('https://')) return imgUrl;
+  var protocol=window.location.protocol;
+  var host=window.location.host;
+  var baseUrl=protocol+'//'+host;
+  if(imgUrl.startsWith('/')) return baseUrl+imgUrl;
+  var path=window.location.pathname;
+  var directory=path.substring(0,path.lastIndexOf('/'));
+  return baseUrl+directory+'/'+imgUrl;
+}
+
 function setOGTags(p){
+  if(!p) return;
   var base=window.location.origin+window.location.pathname;
   var prodUrl=base+(p.nombre?'?prod='+encodeURIComponent(p.nombre):'');
   var img=p.imagen_url||'';
+  var absoluteImageUrl=getAbsoluteImageUrl(img);
   var desc=(p.descripcion||'Tejido hecho a mano con amor')+(p.precio?' — Precio: '+p.precio:'');
   document.getElementById('og-title').setAttribute('content',p.nombre+' — Dtalles Tejidos');
   document.getElementById('og-description').setAttribute('content',desc);
-  document.getElementById('og-image').setAttribute('content',img);
+  document.getElementById('og-image').setAttribute('content',absoluteImageUrl);
+  document.getElementById('og-image-secure').setAttribute('content',absoluteImageUrl);
   document.getElementById('og-url').setAttribute('content',prodUrl);
   document.getElementById('tw-title').setAttribute('content',p.nombre+' — Dtalles Tejidos');
   document.getElementById('tw-desc').setAttribute('content',desc);
-  document.getElementById('tw-image').setAttribute('content',img);
+  document.getElementById('tw-image').setAttribute('content',absoluteImageUrl);
   document.title=p.nombre+' — Dtalles Tejidos';
+  console.log('✅ OG Tags actualizados:',{titulo:p.nombre,imagen:absoluteImageUrl,url:prodUrl});
 }
 
 function resetOGTags(){
@@ -1071,11 +1096,13 @@ function resetOGTags(){
   document.getElementById('og-title').setAttribute('content','Dtalles — Tejidos con Amor');
   document.getElementById('og-description').setAttribute('content','Producciones hechas a mano, con cariño para ti y los tuyos');
   document.getElementById('og-image').setAttribute('content','');
+  document.getElementById('og-image-secure').setAttribute('content','');
   document.getElementById('og-url').setAttribute('content',base);
   document.getElementById('tw-title').setAttribute('content','Dtalles — Tejidos con Amor');
   document.getElementById('tw-desc').setAttribute('content','Producciones hechas a mano, con cariño para ti y los tuyos');
   document.getElementById('tw-image').setAttribute('content','');
   document.title='Dtalles — Tejidos con Amor';
+  console.log('✅ OG Tags reseteados');
 }
 
 function previewImgs(input,prevId){
