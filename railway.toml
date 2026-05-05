@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+
+[deploy]
+startCommand = "npm start"
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+healthcheckPath = "/"
+healthcheckTimeout = 30
+
+[docs]
+description = "Tienda de tejidos con SSR para WhatsApp OG Tags"
