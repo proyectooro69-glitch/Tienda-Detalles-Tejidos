@@ -22,7 +22,7 @@ const app = express();
 // VARIABLES DE ENTORNO
 // ════════════════════════════════════════════════════════════════
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://zkiqgciijhqizhxkryea.supabase.co';
 const SUPABASE_KEY = process.env.SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraXFnY2lpamhxaXpoeGtyeWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1MTMzMjcsImV4cCI6MTk5MjA4OTMyN30.Tq8TdmNP1mKtvgYmfLxE1Q7RIpFhxlMqXJBfFKLlr5g';
 
