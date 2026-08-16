@@ -62,8 +62,17 @@ export default async (request, context) => {
     return context.next();
   }
 
-  // Trae el HTML original tal cual Netlify lo serviría
-  const response = await context.next();
+  // Algunos bots (Facebook/WhatsApp) piden solo un "pedacito" de la página
+  // (Range request) para ahorrar datos. Si dejamos pasar eso, podemos recibir
+  // un HTML incompleto (código 206) y algunas meta tags se pierden según
+  // dónde caiga el corte. Pedimos siempre la página COMPLETA.
+  const forwardHeaders = new Headers(request.headers);
+  forwardHeaders.delete('range');
+  forwardHeaders.delete('if-range');
+  const cleanRequest = new Request(request, { headers: forwardHeaders });
+
+  // Trae el HTML original tal cual Netlify lo serviría (completo, sin recortes)
+  const response = await context.next(cleanRequest);
   let html = await response.text();
 
   try {
@@ -79,7 +88,10 @@ export default async (request, context) => {
 
     if (!resp.ok) {
       console.log(`[og-bot] Supabase respondió ${resp.status}`);
-      return new Response(html, { status: response.status, headers: response.headers });
+      return new Response(html, {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' }
+      });
     }
 
     const data = await resp.json();
@@ -87,7 +99,10 @@ export default async (request, context) => {
 
     if (!product) {
       console.log('[og-bot] Producto no encontrado en BD');
-      return new Response(html, { status: response.status, headers: response.headers });
+      return new Response(html, {
+        status: 200,
+        headers: { 'content-type': 'text/html; charset=utf-8' }
+      });
     }
 
     console.log(`[og-bot] Producto encontrado: "${product.nombre}"`);
@@ -138,8 +153,8 @@ export default async (request, context) => {
   }
 
   return new Response(html, {
-    status: response.status,
-    headers: response.headers
+    status: 200,
+    headers: { 'content-type': 'text/html; charset=utf-8' }
   });
 };
 
