@@ -25,6 +25,23 @@ function isBot(userAgent) {
   return BOT_USER_AGENTS.some(bot => userAgent.includes(bot));
 }
 
+// WhatsApp descarta imágenes de más de ~300-600KB, aunque Facebook las acepte
+// hasta 8MB. Esta función pide una versión ya redimensionada y comprimida
+// del mismo archivo, usando el servicio gratuito wsrv.nl — sin tocar ni
+// volver a subir tus fotos originales en Supabase.
+function optimizarImagenParaWhatsApp(originalUrl) {
+  if (!originalUrl) return originalUrl;
+  const params = new URLSearchParams({
+    url: originalUrl,
+    w: '1200',
+    h: '630',
+    fit: 'cover',
+    q: '75',
+    output: 'jpg'
+  });
+  return `https://wsrv.nl/?${params.toString()}`;
+}
+
 function escapeHtml(str) {
   return String(str)
     .replace(/&/g, '&amp;')
@@ -79,6 +96,8 @@ export default async (request, context) => {
     if (ogImage && !ogImage.startsWith('http')) {
       ogImage = `${SUPABASE_URL}${ogImage}`;
     }
+    // Comprimir/redimensionar antes de usarla como og:image (fix WhatsApp)
+    ogImage = optimizarImagenParaWhatsApp(ogImage);
 
     const ogTitle = product.nombre + ' — Dtalles Tejidos';
     const ogDesc = (product.descripcion || 'Tejido hecho a mano con amor') +
