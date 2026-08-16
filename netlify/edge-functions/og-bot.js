@@ -17,9 +17,8 @@ const BOT_USER_AGENTS = [
   'Telegram', 'Viber', 'Signal', 'Messenger', 'curl', 'wget'
 ];
 
-const SUPABASE_URL = 'https://zkiqgciijhqizhxkryea.supabase.co';
-// Misma anon key pública que ya usa server.js (segura para el frontend)
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraXFnY2lpamhxaXpoeGtyeWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1MTMzMjcsImV4cCI6MTk5MjA4OTMyN30.Tq8TdmNP1mKtvgYmfLxE1Q7RIpFhxlMqXJBfFKLlr5g';
+const SUPABASE_URL = Netlify.env.get("SUPABASE_URL");
+const SUPABASE_KEY = Netlify.env.get("SUPABASE_KEY");KLlr5g';
 
 function isBot(userAgent) {
   if (!userAgent) return false;
