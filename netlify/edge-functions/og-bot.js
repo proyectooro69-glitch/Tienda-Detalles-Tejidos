@@ -18,7 +18,7 @@ const BOT_USER_AGENTS = [
 ];
 
 const SUPABASE_URL = Netlify.env.get("SUPABASE_URL");
-const SUPABASE_KEY = Netlify.env.get("SUPABASE_KEY");KLlr5g';
+const SUPABASE_KEY = Netlify.env.get("SUPABASE_KEY");KLlr5g'
 
 function isBot(userAgent) {
   if (!userAgent) return false;
