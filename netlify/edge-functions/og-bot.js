@@ -25,22 +25,7 @@ function isBot(userAgent) {
   return BOT_USER_AGENTS.some(bot => userAgent.includes(bot));
 }
 
-// WhatsApp descarta imágenes de más de ~300-600KB, aunque Facebook las acepte
-// hasta 8MB. Esta función pide una versión ya redimensionada y comprimida
-// del mismo archivo, usando el servicio gratuito wsrv.nl — sin tocar ni
-// volver a subir tus fotos originales en Supabase.
-function optimizarImagenParaWhatsApp(originalUrl) {
-  if (!originalUrl) return originalUrl;
-  const params = new URLSearchParams({
-    url: originalUrl,
-    w: '1200',
-    h: '630',
-    fit: 'cover',
-    q: '75',
-    output: 'jpg'
-  });
-  return `https://wsrv.nl/?${params.toString()}`;
-}
+
 
 function escapeHtml(str) {
   return String(str)
@@ -71,34 +56,46 @@ export default async (request, context) => {
   forwardHeaders.delete('if-range');
   const cleanRequest = new Request(request, { headers: forwardHeaders });
 
-  // Trae el HTML original tal cual Netlify lo serviría (completo, sin recortes)
-  const response = await context.next(cleanRequest);
-  let html = await response.text();
+  // ── CLAVE DE VELOCIDAD ──────────────────────────────────────────
+  // WhatsApp tiene un límite de tiempo (timeout) MUY estricto (unos
+  // pocos segundos) para leer la página — mucho más agresivo que
+  // Facebook, que es más "paciente". Antes, esta función pedía el HTML
+  // y ESPERABA esa respuesta completa antes de recién ahí empezar a
+  // consultar Supabase — dos viajes de red uno detrás del otro.
+  // Ahora se piden AMBAS COSAS AL MISMO TIEMPO (en paralelo), y a la
+  // consulta de Supabase se le pone un límite de 4 segundos: si tarda
+  // más que eso, se sigue de largo con el HTML original en vez de
+  // dejar a WhatsApp esperando y que se rinda sin mostrar nada.
+  const supabaseController = new AbortController();
+  const supabaseTimeout = setTimeout(() => supabaseController.abort(), 4000);
 
-  try {
-    console.log('[og-bot] Bot detectado, consultando Supabase...');
+  const query = `${SUPABASE_URL}/rest/v1/productos?nombre=eq.${encodeURIComponent(decodeURIComponent(prodParam))}&select=nombre,imagen_url,descripcion,precio`;
 
-    const query = `${SUPABASE_URL}/rest/v1/productos?nombre=eq.${encodeURIComponent(decodeURIComponent(prodParam))}&select=nombre,imagen_url,descripcion,precio`;
-    const resp = await fetch(query, {
+  const [response, productResult] = await Promise.all([
+    context.next(cleanRequest),
+    fetch(query, {
       headers: {
         'apikey': SUPABASE_KEY,
         'Authorization': `Bearer ${SUPABASE_KEY}`
-      }
-    });
+      },
+      signal: supabaseController.signal
+    })
+      .then(r => r.ok ? r.json() : null)
+      .catch(err => {
+        console.log(`[og-bot] Supabase tardó demasiado o falló: ${err.message}`);
+        return null;
+      })
+      .finally(() => clearTimeout(supabaseTimeout))
+  ]);
 
-    if (!resp.ok) {
-      console.log(`[og-bot] Supabase respondió ${resp.status}`);
-      return new Response(html, {
-        status: 200,
-        headers: { 'content-type': 'text/html; charset=utf-8' }
-      });
-    }
+  let html = await response.text();
 
-    const data = await resp.json();
+  try {
+    const data = productResult;
     const product = Array.isArray(data) ? data[0] : null;
 
     if (!product) {
-      console.log('[og-bot] Producto no encontrado en BD');
+      console.log('[og-bot] Producto no encontrado en BD (o Supabase no respondió a tiempo)');
       return new Response(html, {
         status: 200,
         headers: { 'content-type': 'text/html; charset=utf-8' }
@@ -111,8 +108,9 @@ export default async (request, context) => {
     if (ogImage && !ogImage.startsWith('http')) {
       ogImage = `${SUPABASE_URL}${ogImage}`;
     }
-    // Comprimir/redimensionar antes de usarla como og:image (fix WhatsApp)
-    ogImage = optimizarImagenParaWhatsApp(ogImage);
+    // La imagen ya viene comprimida desde el momento en que se sube
+    // (función compressImg en el panel de admin: máx 1200px, calidad 82%),
+    // así que se usa tal cual, sin intermediarios externos.
 
     const ogTitle = product.nombre + ' — Dtalles Tejidos';
     const ogDesc = (product.descripcion || 'Tejido hecho a mano con amor') +
