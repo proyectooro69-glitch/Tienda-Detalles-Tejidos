@@ -1052,7 +1052,7 @@ function buyWA(n,precio,imgUrl){
     setOGTags(window._modalProduct);
   }
   var base=window.location.origin+window.location.pathname;
-  var prodUrl=base+'?prod='+encodeURIComponent(n||'');
+  var prodUrl=window.location.origin+'/api/producto?nombre='+encodeURIComponent(n||'');
   var precioFmt=formatPrecio(precio);
   var msg='Hola 👋\n\nMe interesa este producto:\n*'+n+'*'+(precioFmt?'\n\nPrecio: *'+precioFmt+'*':'')+'\n\nPuedes verlo aquí: '+prodUrl+'\n\n¿Podrías ayudarme? 😊';
   console.log('📱 Compartiendo por WhatsApp:',{nombre:n,precio:precioFmt,imagen:imgUrl,url:prodUrl});
@@ -2040,5 +2040,4 @@ span[class*="money-symbol"]:not([data-cup]) {
       }
     </script>
   </body>
-</html>  
-
+</html>
