@@ -93,7 +93,6 @@ export default async (req, res) => {
 <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
 <meta name="twitter:description" content="${escapeHtml(ogDesc)}">
 <meta name="twitter:image" content="${escapeHtml(ogImage)}">
-<meta http-equiv="refresh" content="0; url=${escapeHtml(redirectUrl)}">
 <title>${escapeHtml(ogTitle)}</title>
 <script>window.location.replace(${JSON.stringify(redirectUrl)});</script>
 </head>
