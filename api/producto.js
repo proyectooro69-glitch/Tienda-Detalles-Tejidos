@@ -41,13 +41,20 @@ export default async (req, res) => {
   if (nombre) {
     redirectUrl = `${SITE_URL}/?prod=${encodeURIComponent(nombre)}`;
 
+    // Lección aprendida con Netlify: WhatsApp tiene poca paciencia.
+    // Si Supabase tarda más de 2.5s, seguimos de largo con los valores
+    // por defecto en vez de dejar a WhatsApp esperando.
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
     try {
       const query = `${SUPABASE_URL}/rest/v1/productos?nombre=eq.${encodeURIComponent(nombre)}&select=nombre,imagen_url,descripcion,precio`;
       const resp = await fetch(query, {
         headers: {
           apikey: SUPABASE_KEY,
           Authorization: `Bearer ${SUPABASE_KEY}`
-        }
+        },
+        signal: controller.signal
       });
 
       if (resp.ok) {
@@ -65,8 +72,10 @@ export default async (req, res) => {
         }
       }
     } catch (err) {
-      // Si Supabase falla, igual seguimos: se muestra el título/desc
-      // por defecto y se redirige normal a la tienda.
+      // Si Supabase falla o tarda demasiado, igual seguimos: se muestra
+      // el título/desc por defecto y se redirige normal a la tienda.
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
