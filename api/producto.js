@@ -29,6 +29,23 @@ function escapeHtml(str) {
     .replace(/"/g, '&quot;');
 }
 
+// WhatsApp descarta imágenes de más de ~300-600KB, aunque las fotos nuevas
+// ya se suben comprimidas (compressImg en el panel), las fotos viejas del
+// catálogo pueden seguir pesadas. Esto las comprime al vuelo, para
+// cualquier producto, sin tener que volver a subir nada.
+function optimizarImagenParaWhatsApp(originalUrl) {
+  if (!originalUrl) return originalUrl;
+  const params = new URLSearchParams({
+    url: originalUrl,
+    w: '1200',
+    h: '630',
+    fit: 'cover',
+    q: '75',
+    output: 'jpg'
+  });
+  return `https://wsrv.nl/?${params.toString()}`;
+}
+
 export default async (req, res) => {
   const url = new URL(req.url, SITE_URL);
   const nombre = url.searchParams.get('nombre') || '';
@@ -70,6 +87,7 @@ export default async (req, res) => {
           if (ogImage && !ogImage.startsWith('http')) {
             ogImage = `${SUPABASE_URL}${ogImage}`;
           }
+          ogImage = optimizarImagenParaWhatsApp(ogImage);
         }
         // Si no se encuentra el producto, se queda con los valores
         // por defecto (título/descripción genéricos de la tienda).
