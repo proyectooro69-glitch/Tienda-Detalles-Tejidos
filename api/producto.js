@@ -41,11 +41,11 @@ export default async (req, res) => {
   if (nombre) {
     redirectUrl = `${SITE_URL}/?prod=${encodeURIComponent(nombre)}`;
 
-    // Lección aprendida con Netlify: WhatsApp tiene poca paciencia.
-    // Si Supabase tarda más de 2.5s, seguimos de largo con los valores
-    // por defecto en vez de dejar a WhatsApp esperando.
+    // Como aquí solo hay UNA llamada (no dos en paralelo, como en Netlify),
+    // le damos más margen: 6 segundos, para cubrir el "arranque en frío"
+    // de las funciones serverless de Stormkit.
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 2500);
+    const timeoutId = setTimeout(() => controller.abort(), 6000);
 
     try {
       const query = `${SUPABASE_URL}/rest/v1/productos?nombre=eq.${encodeURIComponent(nombre)}&select=nombre,imagen_url,descripcion,precio`;
