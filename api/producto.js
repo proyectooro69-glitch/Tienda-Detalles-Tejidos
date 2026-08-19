@@ -41,10 +41,7 @@ export default async (req, res) => {
   if (nombre) {
     redirectUrl = `${SITE_URL}/?prod=${encodeURIComponent(nombre)}`;
 
-    if (!SUPABASE_URL || !SUPABASE_KEY) {
-      // ── MODO DIAGNÓSTICO TEMPORAL ──
-      ogDesc = `[DEBUG] Variables de entorno vacías. SUPABASE_URL=${SUPABASE_URL ? 'OK' : 'FALTA'} SUPABASE_KEY=${SUPABASE_KEY ? 'OK' : 'FALTA'}`;
-    } else {
+    if (SUPABASE_URL && SUPABASE_KEY) {
     // Como aquí solo hay UNA llamada (no dos en paralelo, como en Netlify),
     // le damos más margen: 6 segundos, para cubrir el "arranque en frío"
     // de las funciones serverless de Stormkit.
@@ -73,21 +70,14 @@ export default async (req, res) => {
           if (ogImage && !ogImage.startsWith('http')) {
             ogImage = `${SUPABASE_URL}${ogImage}`;
           }
-        } else {
-          // ── MODO DIAGNÓSTICO TEMPORAL ──
-          ogDesc = `[DEBUG] 0 resultados para nombre="${nombre}" | respuesta: ${JSON.stringify(data).slice(0,150)}`;
         }
-      } else {
-        // ── MODO DIAGNÓSTICO TEMPORAL ──
-        const bodyTxt = await resp.text().catch(() => '');
-        const kLen = SUPABASE_KEY.length;
-        const kStart = SUPABASE_KEY.slice(0, 8);
-        const kEnd = SUPABASE_KEY.slice(-8);
-        ogDesc = `[DEBUG] status=${resp.status} | key len=${kLen} start="${kStart}" end="${kEnd}" | body: ${bodyTxt.slice(0,120)}`;
+        // Si no se encuentra el producto, se queda con los valores
+        // por defecto (título/descripción genéricos de la tienda).
       }
+      // Si Supabase falla, igual seguimos con los valores por defecto.
     } catch (err) {
-      // ── MODO DIAGNÓSTICO TEMPORAL ──
-      ogDesc = `[DEBUG] Excepción: ${err.name} - ${err.message}`;
+      // Si Supabase falla o tarda demasiado, seguimos con los valores
+      // por defecto en vez de dejar a WhatsApp esperando o mostrando error.
     } finally {
       clearTimeout(timeoutId);
     }
