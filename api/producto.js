@@ -80,7 +80,10 @@ export default async (req, res) => {
       } else {
         // ── MODO DIAGNÓSTICO TEMPORAL ──
         const bodyTxt = await resp.text().catch(() => '');
-        ogDesc = `[DEBUG] Supabase status=${resp.status} | body: ${bodyTxt.slice(0,150)}`;
+        const kLen = SUPABASE_KEY.length;
+        const kStart = SUPABASE_KEY.slice(0, 8);
+        const kEnd = SUPABASE_KEY.slice(-8);
+        ogDesc = `[DEBUG] status=${resp.status} | key len=${kLen} start="${kStart}" end="${kEnd}" | body: ${bodyTxt.slice(0,120)}`;
       }
     } catch (err) {
       // ── MODO DIAGNÓSTICO TEMPORAL ──
