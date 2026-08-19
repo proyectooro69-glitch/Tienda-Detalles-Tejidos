@@ -88,7 +88,7 @@ export default async (req, res) => {
 <meta property="og:image" content="${escapeHtml(ogImage)}">
 <meta property="og:image:secure_url" content="${escapeHtml(ogImage)}">
 <meta property="og:type" content="website">
-<meta property="og:url" content="${escapeHtml(redirectUrl)}">
+<meta property="og:url" content="${escapeHtml(url.href)}">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="${escapeHtml(ogTitle)}">
 <meta name="twitter:description" content="${escapeHtml(ogDesc)}">
