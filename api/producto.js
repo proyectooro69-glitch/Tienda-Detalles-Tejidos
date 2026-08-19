@@ -15,8 +15,8 @@
 // tantas vueltas en Netlify.
 // ════════════════════════════════════════════════════════════════
 
-const SUPABASE_URL = 'https://zkiqgciijhqizhxkryea.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpraXFnY2lpamhxaXpoeGtyeWVhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MDk1MTMzMjcsImV4cCI6MTk5MjA4OTMyN30.Tq8TdmNP1mKtvgYmfLxE1Q7RIpFhxlMqXJBfFKLlr5g';
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SUPABASE_KEY = process.env.SUPABASE_KEY;
 
 // ⚠️ CAMBIA ESTO si tu URL final de Stormkit es distinta:
 const SITE_URL = 'https://tiendadtalles-tejidos.stormkit.dev';
@@ -41,6 +41,10 @@ export default async (req, res) => {
   if (nombre) {
     redirectUrl = `${SITE_URL}/?prod=${encodeURIComponent(nombre)}`;
 
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      // ── MODO DIAGNÓSTICO TEMPORAL ──
+      ogDesc = `[DEBUG] Variables de entorno vacías. SUPABASE_URL=${SUPABASE_URL ? 'OK' : 'FALTA'} SUPABASE_KEY=${SUPABASE_KEY ? 'OK' : 'FALTA'}`;
+    } else {
     // Como aquí solo hay UNA llamada (no dos en paralelo, como en Netlify),
     // le damos más margen: 6 segundos, para cubrir el "arranque en frío"
     // de las funciones serverless de Stormkit.
@@ -69,13 +73,21 @@ export default async (req, res) => {
           if (ogImage && !ogImage.startsWith('http')) {
             ogImage = `${SUPABASE_URL}${ogImage}`;
           }
+        } else {
+          // ── MODO DIAGNÓSTICO TEMPORAL ──
+          ogDesc = `[DEBUG] 0 resultados para nombre="${nombre}" | respuesta: ${JSON.stringify(data).slice(0,150)}`;
         }
+      } else {
+        // ── MODO DIAGNÓSTICO TEMPORAL ──
+        const bodyTxt = await resp.text().catch(() => '');
+        ogDesc = `[DEBUG] Supabase status=${resp.status} | body: ${bodyTxt.slice(0,150)}`;
       }
     } catch (err) {
-      // Si Supabase falla o tarda demasiado, igual seguimos: se muestra
-      // el título/desc por defecto y se redirige normal a la tienda.
+      // ── MODO DIAGNÓSTICO TEMPORAL ──
+      ogDesc = `[DEBUG] Excepción: ${err.name} - ${err.message}`;
     } finally {
       clearTimeout(timeoutId);
+    }
     }
   }
 
